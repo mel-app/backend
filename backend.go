@@ -51,12 +51,12 @@ func authenticateUser(fail func(int), request *http.Request, db *sql.DB) (user s
 
 	// Check the password. We salt and encrypt it to avoid potential security
 	// issues if the db is stolen.
-	// This appears to be reasonably close to "best practice", but the 1<<20
+	// This appears to be reasonably close to "best practice", but the 1<<16
 	// value probably should be checked for sanity.
-	// FIXME: We don't store the 1<<20 value in the db, but it should be
+	// FIXME: We don't store the 1<<16 value in the db, but it should be
 	// increased as compute power grows. Doing so is complicated since some way
 	// of migrating users from the old value would also need to be implemented.
-	key, err := scrypt.Key([]byte(password), salt, 1<<20, 8, 1, 256)
+	key, err := scrypt.Key([]byte(password), salt, 1<<16, 8, 1, 256)
 	if err != nil {
 		internalError(fail, err)
 		return user, false
