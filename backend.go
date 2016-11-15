@@ -81,9 +81,21 @@ func ListProjects(fail func(int), encoder *json.Encoder, user string, db *sql.DB
 	}
 }
 
+// Flag responds with the current state of the flag.
+func Flag(fail func(int), encoder *json.Encoder, pid int, user string, db *sql.DB) {
+	// TODO: We need to authenticate the user here.
+	flag := false
+	err := db.QueryRow("SELECT flag FROM project WHERE id=?", pid).Scan(&flag)
+	if err != nil {
+		internalError(fail, err)
+		return
+	}
+	encoder.Encode(flag)
+}
+
 // Project responds with the details of the given project.
 func Project(fail func(int), encoder *json.Encoder, pid int, user string, db *sql.DB) {
-	// FIXME: We need to authenticate the user here.
+	// TODO: We need to authenticate the user here.
 	name, percentage, description := "", "", ""
 	err := db.QueryRow("SELECT name, percentage, description FROM project WHERE id=?", pid).Scan(&name, &percentage, &description)
 	if err != nil {
@@ -136,6 +148,8 @@ func handle(writer http.ResponseWriter, request *http.Request) {
 
 		if len(paths) == 2 {
 			Project(fail, enc, pid, user, db)
+		} else if len(paths) == 3 && paths[2] == "flag" {
+			Flag(fail, enc, pid, user, db)
 		} else {
 			http.NotFound(writer, request)
 		}
