@@ -10,21 +10,28 @@ Contact:	<hobbitalastair at yandex dot com>
 package main
 
 import (
+	"encoding/json"
 	"fmt"
-	"html"
 	"log"
 	"net/http"
+	"strings"
 
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
 )
 
+// internalError ends the request and logs an internal error.
+func internalError(fail func(int), err error) {
+	fail(http.StatusInternalServerError)
+	log.Printf("%q\n", err)
+}
+
 // Authenticate the given HTTP request.
 func authenticate(fail func(int), request *http.Request, db *sql.DB) (string, bool) {
-	name, password, ok := request.BasicAuth()
+	user, password, ok := request.BasicAuth()
 	if !ok {
 		fail(http.StatusUnauthorized)
-		return name, ok
+		return user, ok
 	}
 
 	// dbname and dbpassword are empty values to pass to Scan; we never use them
@@ -33,22 +40,48 @@ func authenticate(fail func(int), request *http.Request, db *sql.DB) (string, bo
 	// FIXME: This is not "best-practice".
 	//	We should salt the password (using a locally stored value), and maybe
 	//	use encrypt(name+password) to avoid duplicated passwords being obvious?
-	err := db.QueryRow("SELECT name FROM users WHERE name=? and password=?", name, password).Scan(&dbname)
+	err := db.QueryRow("SELECT name FROM users WHERE name=? and password=?", user, password).Scan(&dbname)
 	if err == sql.ErrNoRows {
-		log.Printf("Failed to authenticate %q\n", name) // TODO: Remove?
 		fail(http.StatusForbidden)
 	} else if err != nil {
-		log.Printf("Error authenticating user: %q\n", err)
-		fail(http.StatusInternalServerError)
+		internalError(fail, err)
 	}
 
-	return name, err == nil
+	return user, err == nil
+}
+
+// Projects responds with the list of projects for the given user.
+func Projects(fail func(int), encoder *json.Encoder, user string, db *sql.DB) {
+	// TODO: This should also return projects which this user owns.
+	//	Implement that as a view in the database?
+	rows, err := db.Query("SELECT id FROM views WHERE name=?", user)
+	if err != nil {
+		internalError(fail, err)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		id := -1
+		err = rows.Scan(&id)
+		if err != nil {
+			internalError(fail, err)
+			return
+		}
+		err = encoder.Encode(id)
+		if err != nil {
+			internalError(fail, err)
+			return
+		}
+	}
+	if err != nil {
+		internalError(fail, err)
+		return
+	}
 }
 
 // Handle a single HTTP request.
 func handle(writer http.ResponseWriter, request *http.Request) {
-	log.Printf("Handling request for %q\n", html.EscapeString(request.URL.Path))
-
 	// Wrapper for failing functions.
 	fail := func(status int) { http.Error(writer, http.StatusText(status), status) }
 
@@ -62,14 +95,21 @@ func handle(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	// Authenticate.
-	name, ok := authenticate(fail, request, db)
+	user, ok := authenticate(fail, request, db)
 	if !ok {
 		return
 	}
-	fmt.Fprintf(writer, "%q: authenticated as %s\n",
-		html.EscapeString(request.URL.Path), name)
 
 	// Parse the URL and return the corresponding value.
+	// TODO: This assumes GET requests...
+	enc := json.NewEncoder(writer)
+	enc.SetEscapeHTML(true)
+	paths := strings.Split(strings.TrimPrefix(request.URL.Path, "/"), "/")
+	if len(paths) == 1 && paths[0] == "projects" {
+		Projects(fail, enc, user, db)
+	} else {
+		http.NotFound(writer, request)
+	}
 }
 
 func main() {
