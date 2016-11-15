@@ -5,7 +5,7 @@
 - NVARCHAR(320) _name_
 - CHAR(512)? password
 
-### project ###
+### projects ###
 
 Projects must have *at least one* owner.
 
