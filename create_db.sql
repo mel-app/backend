@@ -16,3 +16,7 @@ CREATE TABLE views (
     pid INT REFERENCES projects,
     PRIMARY KEY (name, pid)
 );
+
+-- Populate the projects table.
+INSERT INTO projects VALUES (0, "Test Project 1", 30, "First test project", 1);
+INSERT INTO projects VALUES (1, "Test Project 2", 80, "Second test project", 0);
