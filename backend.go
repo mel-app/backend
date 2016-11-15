@@ -10,6 +10,8 @@ Contact:	<hobbitalastair at yandex dot com>
 package main
 
 import (
+	"bytes"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -30,6 +32,18 @@ func internalError(fail func(int), err error) {
 	log.Printf("%q\n", err)
 }
 
+// encryptPassword salts and encrypts the given password.
+func encryptPassword(password string, salt []byte) ([]byte, error) {
+	// We salt and encrypt the password to avoid potential security issues if
+	// the db is stolen.
+	// This appears to be reasonably close to "best practice", but the 1<<16
+	// value probably should be checked for sanity.
+	// FIXME: We don't store the 1<<16 value in the db, but it should be
+	// increased as compute power grows. Doing so is complicated since some way
+	// of migrating users from the old value would also need to be implemented.
+	return scrypt.Key([]byte(password), salt, 1<<16, 8, 1, passwordSize)
+}
+
 // authenticateUser checks that the user and password in the given HTTP request.
 func authenticateUser(fail func(int), request *http.Request, db *sql.DB) (user string, ok bool) {
 	// Get the user name and password.
@@ -40,10 +54,28 @@ func authenticateUser(fail func(int), request *http.Request, db *sql.DB) (user s
 	}
 
 	// Retrieve the salt and database password.
-	salt := []byte("")
+	salt := make([]byte, passwordSize)
 	dbpassword := []byte("")
 	err := db.QueryRow("SELECT salt, password FROM users WHERE name=?", user).Scan(&salt, &dbpassword)
-	if err == sql.ErrNoRows {
+	if err == sql.ErrNoRows && request.URL.Path == "/projects" && request.Method == http.MethodPut {
+		// FIXME: Special case creating a new user.
+		_, err = rand.Read(salt)
+		if err != nil {
+			internalError(fail, err)
+			return user, false
+		}
+		key, err := encryptPassword(password, salt)
+		if err != nil {
+			internalError(fail, err)
+			return user, false
+		}
+		_, err = db.Exec("INSERT INTO users VALUES (?, ?, ?)", user, salt, key)
+		if err != nil {
+			internalError(fail, err)
+			return user, false
+		}
+		return user, true
+	} else if err == sql.ErrNoRows {
 		fail(http.StatusForbidden)
 		return user, false
 	} else if err != nil {
@@ -51,22 +83,13 @@ func authenticateUser(fail func(int), request *http.Request, db *sql.DB) (user s
 		return user, false
 	}
 
-	// Check the password. We salt and encrypt it to avoid potential security
-	// issues if the db is stolen.
-	// This appears to be reasonably close to "best practice", but the 1<<16
-	// value probably should be checked for sanity.
-	// FIXME: We don't store the 1<<16 value in the db, but it should be
-	// increased as compute power grows. Doing so is complicated since some way
-	// of migrating users from the old value would also need to be implemented.
-	key, err := scrypt.Key([]byte(password), salt, 1<<16, 8, 1, passwordSize)
+	// Check the password.
+	key, err := encryptPassword(password, salt)
 	if err != nil {
 		internalError(fail, err)
 		return user, false
 	}
-	fmt.Printf("Password: %q\n", string(key))
-	fmt.Printf("Password: %q\n", string(dbpassword))
-
-	if string(key) != string(dbpassword) {
+	if !bytes.Equal(key, dbpassword) {
 		fail(http.StatusForbidden)
 		return user, false
 	}
@@ -84,7 +107,7 @@ func authenticateRequest(fail func(int), request *http.Request, resource Resourc
 func ListProjects(fail func(int), encoder *json.Encoder, user string, db *sql.DB) {
 	// TODO: This should also return projects which this user owns.
 	//	Implement that as a view in the database?
-	rows, err := db.Query("SELECT id FROM views WHERE name=?", user)
+	rows, err := db.Query("SELECT pid FROM views WHERE name=?", user)
 	if err != nil {
 		internalError(fail, err)
 		return
@@ -114,7 +137,7 @@ func ListProjects(fail func(int), encoder *json.Encoder, user string, db *sql.DB
 func Flag(fail func(int), encoder *json.Encoder, pid int, user string, db *sql.DB) {
 	// TODO: We need to authenticate the user here.
 	flag := false
-	err := db.QueryRow("SELECT flag FROM project WHERE id=?", pid).Scan(&flag)
+	err := db.QueryRow("SELECT flag FROM projects WHERE id=?", pid).Scan(&flag)
 	if err != nil {
 		internalError(fail, err)
 		return
@@ -126,7 +149,7 @@ func Flag(fail func(int), encoder *json.Encoder, pid int, user string, db *sql.D
 func Project(fail func(int), encoder *json.Encoder, pid int, user string, db *sql.DB) {
 	// TODO: We need to authenticate the user here.
 	name, percentage, description := "", "", ""
-	err := db.QueryRow("SELECT name, percentage, description FROM project WHERE id=?", pid).Scan(&name, &percentage, &description)
+	err := db.QueryRow("SELECT name, percentage, description FROM projects WHERE id=?", pid).Scan(&name, &percentage, &description)
 	if err != nil {
 		internalError(fail, err)
 		return
