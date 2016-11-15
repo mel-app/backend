@@ -19,6 +19,7 @@ import (
 
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
+	"golang.org/x/crypto/scrypt"
 )
 
 // internalError ends the request and logs an internal error.
@@ -32,23 +33,34 @@ func authenticate(fail func(int), request *http.Request, db *sql.DB) (string, bo
 	user, password, ok := request.BasicAuth()
 	if !ok {
 		fail(http.StatusUnauthorized)
-		return user, ok
+		return user, false
 	}
 
-	// dbname and dbpassword are empty values to pass to Scan; we never use them
-	// elsewhere.
-	dbname := ""
-	// FIXME: This is not "best-practice".
-	//	We should salt the password (using a locally stored value), and maybe
-	//	use encrypt(name+password) to avoid duplicated passwords being obvious?
-	err := db.QueryRow("SELECT name FROM users WHERE name=? and password=?", user, password).Scan(&dbname)
+	// Retrieve the salt and database password.
+	salt := []byte("")
+	dbpassword := []byte("")
+	err := db.QueryRow("SELECT salt, password FROM users WHERE name=?", user).Scan(&salt, &dbpassword)
 	if err == sql.ErrNoRows {
 		fail(http.StatusForbidden)
+		return user, false
 	} else if err != nil {
 		internalError(fail, err)
+		return user, false
 	}
 
-	return user, err == nil
+	// Check the password. We salt and encrypt it to avoid potential security
+	// issues if the db is stolen.
+	// This appears to be reasonably close to "best practice", but the 1<<20
+	// value probably should be checked for sanity.
+	// FIXME: We don't store the 1<<20 value in the db, but it should be
+	// increased as compute power grows. Doing so is complicated since some way
+	// of migrating users from the old value would also need to be implemented.
+	key, err := scrypt.Key([]byte(password), salt, 1<<20, 8, 1, 256)
+	if err != nil {
+		internalError(fail, err)
+		return user, false
+	}
+	return user, string(key) == string(dbpassword)
 }
 
 // ListProjects responds with the list of projects for the given user.
