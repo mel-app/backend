@@ -28,8 +28,9 @@ func internalError(fail func(int), err error) {
 	log.Printf("%q\n", err)
 }
 
-// Authenticate the given HTTP request.
-func authenticate(fail func(int), request *http.Request, db *sql.DB) (string, bool) {
+// authenticateUser checks that the user and password in the given HTTP request.
+func authenticateUser(fail func(int), request *http.Request, db *sql.DB) (user string, ok bool) {
+	// Get the user name and password.
 	user, password, ok := request.BasicAuth()
 	if !ok {
 		fail(http.StatusUnauthorized)
@@ -61,6 +62,13 @@ func authenticate(fail func(int), request *http.Request, db *sql.DB) (string, bo
 		return user, false
 	}
 	return user, string(key) == string(dbpassword)
+}
+
+// authenticateRequest checks that the given user has permission to complete
+// the request.
+func authenticateRequest(fail func(int), request *http.Request, db *sql.DB) ok bool {
+	// TODO: Implement checking here.
+	return true
 }
 
 // ListProjects responds with the list of projects for the given user.
@@ -134,8 +142,8 @@ func handle(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	// Authenticate.
-	user, ok := authenticate(fail, request, db)
-	if !ok {
+	user, ok := authenticateUser(fail, request, db)
+	if !ok || !authenticateRequest(fail, request, db) {
 		return
 	}
 
