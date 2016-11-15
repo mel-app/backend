@@ -15,6 +15,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"strconv"
 
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
@@ -50,8 +51,8 @@ func authenticate(fail func(int), request *http.Request, db *sql.DB) (string, bo
 	return user, err == nil
 }
 
-// Projects responds with the list of projects for the given user.
-func Projects(fail func(int), encoder *json.Encoder, user string, db *sql.DB) {
+// ListProjects responds with the list of projects for the given user.
+func ListProjects(fail func(int), encoder *json.Encoder, user string, db *sql.DB) {
 	// TODO: This should also return projects which this user owns.
 	//	Implement that as a view in the database?
 	rows, err := db.Query("SELECT id FROM views WHERE name=?", user)
@@ -80,6 +81,20 @@ func Projects(fail func(int), encoder *json.Encoder, user string, db *sql.DB) {
 	}
 }
 
+// Project responds with the details of the given project.
+func Project(fail func(int), encoder *json.Encoder, pid int, user string, db *sql.DB) {
+	// FIXME: We need to authenticate the user here.
+	name, percentage, description := "", "", ""
+	err := db.QueryRow("SELECT name, percentage, description FROM project WHERE id=?", pid).Scan(&name, &percentage, &description)
+	if err != nil {
+		internalError(fail, err)
+		return
+	}
+	encoder.Encode(name)
+	encoder.Encode(percentage)
+	encoder.Encode(description)
+}
+
 // Handle a single HTTP request.
 func handle(writer http.ResponseWriter, request *http.Request) {
 	// Wrapper for failing functions.
@@ -105,10 +120,25 @@ func handle(writer http.ResponseWriter, request *http.Request) {
 	enc := json.NewEncoder(writer)
 	enc.SetEscapeHTML(true)
 	paths := strings.Split(strings.TrimPrefix(request.URL.Path, "/"), "/")
-	if len(paths) == 1 && paths[0] == "projects" {
-		Projects(fail, enc, user, db)
-	} else {
+
+	// FIXME: Match using regular expressions instead?
+	if len(paths) < 1 || paths[0] != "projects" {
 		http.NotFound(writer, request)
+	} else if len(paths) == 1 {
+		ListProjects(fail, enc, user, db)
+	} else {
+		// Grab the project ID from the URL.
+		pid, err := strconv.Atoi(paths[1])
+		if err != nil {
+			http.NotFound(writer, request)
+			return
+		}
+
+		if len(paths) == 2 {
+			Project(fail, enc, pid, user, db)
+		} else {
+			http.NotFound(writer, request)
+		}
 	}
 }
 
