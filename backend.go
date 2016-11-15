@@ -14,13 +14,15 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
+	"strconv"
 
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/crypto/scrypt"
 )
+
+const passwordSize = 256
 
 // internalError ends the request and logs an internal error.
 func internalError(fail func(int), err error) {
@@ -56,17 +58,24 @@ func authenticateUser(fail func(int), request *http.Request, db *sql.DB) (user s
 	// FIXME: We don't store the 1<<16 value in the db, but it should be
 	// increased as compute power grows. Doing so is complicated since some way
 	// of migrating users from the old value would also need to be implemented.
-	key, err := scrypt.Key([]byte(password), salt, 1<<16, 8, 1, 256)
+	key, err := scrypt.Key([]byte(password), salt, 1<<16, 8, 1, passwordSize)
 	if err != nil {
 		internalError(fail, err)
 		return user, false
 	}
-	return user, string(key) == string(dbpassword)
+	fmt.Printf("Password: %q\n", string(key))
+	fmt.Printf("Password: %q\n", string(dbpassword))
+
+	if string(key) != string(dbpassword) {
+		fail(http.StatusForbidden)
+		return user, false
+	}
+	return user, true
 }
 
 // authenticateRequest checks that the given user has permission to complete
 // the request.
-func authenticateRequest(fail func(int), request *http.Request, db *sql.DB) ok bool {
+func authenticateRequest(fail func(int), request *http.Request, resource Resource) (ok bool) {
 	// TODO: Implement checking here.
 	return true
 }
@@ -141,9 +150,21 @@ func handle(writer http.ResponseWriter, request *http.Request) {
 		fail(http.StatusInternalServerError)
 	}
 
-	// Authenticate.
+	// Authenticate the user.
 	user, ok := authenticateUser(fail, request, db)
-	if !ok || !authenticateRequest(fail, request, db) {
+	if !ok {
+		return
+	}
+
+	resource, err := FromURI(user, request.URL.Path, db)
+	if err == InvalidResource {
+		http.NotFound(writer, request)
+		return
+	} else if err != nil {
+		internalError(fail, err)
+		return
+	}
+	if !authenticateRequest(fail, request, resource) {
 		return
 	}
 
