@@ -16,8 +16,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
-	"strconv"
 
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
@@ -98,65 +96,8 @@ func authenticateUser(fail func(int), request *http.Request, db *sql.DB) (user s
 
 // authenticateRequest checks that the given user has permission to complete
 // the request.
-func authenticateRequest(fail func(int), request *http.Request, resource Resource) (ok bool) {
-	// TODO: Implement checking here.
-	return true
-}
-
-// ListProjects responds with the list of projects for the given user.
-func ListProjects(fail func(int), encoder *json.Encoder, user string, db *sql.DB) {
-	// TODO: This should also return projects which this user owns.
-	//	Implement that as a view in the database?
-	rows, err := db.Query("SELECT pid FROM views WHERE name=?", user)
-	if err != nil {
-		internalError(fail, err)
-		return
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		id := -1
-		err = rows.Scan(&id)
-		if err != nil {
-			internalError(fail, err)
-			return
-		}
-		err = encoder.Encode(id)
-		if err != nil {
-			internalError(fail, err)
-			return
-		}
-	}
-	if err != nil {
-		internalError(fail, err)
-		return
-	}
-}
-
-// Flag responds with the current state of the flag.
-func Flag(fail func(int), encoder *json.Encoder, pid int, user string, db *sql.DB) {
-	// TODO: We need to authenticate the user here.
-	flag := false
-	err := db.QueryRow("SELECT flag FROM projects WHERE id=?", pid).Scan(&flag)
-	if err != nil {
-		internalError(fail, err)
-		return
-	}
-	encoder.Encode(flag)
-}
-
-// Project responds with the details of the given project.
-func Project(fail func(int), encoder *json.Encoder, pid int, user string, db *sql.DB) {
-	// TODO: We need to authenticate the user here.
-	name, percentage, description := "", "", ""
-	err := db.QueryRow("SELECT name, percentage, description FROM projects WHERE id=?", pid).Scan(&name, &percentage, &description)
-	if err != nil {
-		internalError(fail, err)
-		return
-	}
-	encoder.Encode(name)
-	encoder.Encode(percentage)
-	encoder.Encode(description)
+func authenticateRequest(request *http.Request, resource Resource) (ok bool) {
+	return ((request.Method == http.MethodGet) && (resource.Permissions()&Read != 0)) || ((request.Method == http.MethodPost) && (resource.Permissions()&Write != 0))
 }
 
 // Handle a single HTTP request.
@@ -179,6 +120,7 @@ func handle(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
+	// Get the corresponding resource and authenticate the request.
 	resource, err := FromURI(user, request.URL.Path, db)
 	if err == InvalidResource {
 		http.NotFound(writer, request)
@@ -187,36 +129,23 @@ func handle(writer http.ResponseWriter, request *http.Request) {
 		internalError(fail, err)
 		return
 	}
-	if !authenticateRequest(fail, request, resource) {
+	if !authenticateRequest(request, resource) {
+		fail(http.StatusForbidden)
 		return
 	}
 
-	// Parse the URL and return the corresponding value.
-	// TODO: This assumes GET requests...
-	enc := json.NewEncoder(writer)
-	enc.SetEscapeHTML(true)
-	paths := strings.Split(strings.TrimPrefix(request.URL.Path, "/"), "/")
-
-	// FIXME: Match using regular expressions instead?
-	if len(paths) < 1 || paths[0] != "projects" {
-		http.NotFound(writer, request)
-	} else if len(paths) == 1 {
-		ListProjects(fail, enc, user, db)
-	} else {
-		// Grab the project ID from the URL.
-		pid, err := strconv.Atoi(paths[1])
+	// Respond.
+	switch request.Method {
+	case http.MethodGet:
+		// Write a response.
+		enc := json.NewEncoder(writer)
+		enc.SetEscapeHTML(true)
+		err = resource.Write(enc)
 		if err != nil {
-			http.NotFound(writer, request)
-			return
+			internalError(fail, err)
 		}
-
-		if len(paths) == 2 {
-			Project(fail, enc, pid, user, db)
-		} else if len(paths) == 3 && paths[2] == "flag" {
-			Flag(fail, enc, pid, user, db)
-		} else {
-			http.NotFound(writer, request)
-		}
+	default:
+		fail(http.StatusMethodNotAllowed)
 	}
 }
 
