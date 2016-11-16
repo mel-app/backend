@@ -29,6 +29,8 @@ otherwise.
 - projects/pID/deliverables: list of project deliverables
 - projects/pID/dID: deliverable state
 
+Use PUT to update existing objects, POST to request creating a new object, and GET to get the current state.
+
 
 ## Syncronising ##
 
