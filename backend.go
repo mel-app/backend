@@ -55,7 +55,7 @@ func authenticateUser(fail func(int), request *http.Request, db *sql.DB) (user s
 	salt := make([]byte, passwordSize)
 	dbpassword := []byte("")
 	err := db.QueryRow("SELECT salt, password FROM users WHERE name=?", user).Scan(&salt, &dbpassword)
-	if err == sql.ErrNoRows && request.URL.Path == "/projects" && request.Method == http.MethodPut {
+	if err == sql.ErrNoRows && request.URL.Path == "/projects" && request.Method == http.MethodPost {
 		// FIXME: Special case creating a new user.
 		_, err = rand.Read(salt)
 		if err != nil {
@@ -145,6 +145,13 @@ func handle(writer http.ResponseWriter, request *http.Request) {
 		}
 	case http.MethodPut:
 		err = resource.Set(json.NewDecoder(request.Body))
+		if err == InvalidBody {
+			fail(http.StatusBadRequest)
+		} else if err != nil {
+			internalError(fail, err)
+		}
+	case http.MethodPost:
+		err = resource.Create(json.NewDecoder(request.Body))
 		if err == InvalidBody {
 			fail(http.StatusBadRequest)
 		} else if err != nil {

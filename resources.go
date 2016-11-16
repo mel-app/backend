@@ -23,6 +23,7 @@ var InvalidBody error = fmt.Errorf("Invalid body\n")
 const (
 	Get = 1 << iota
 	Set
+	Create
 )
 
 // Interface abstracting encoders.
@@ -39,6 +40,7 @@ type Resource interface {
 	Permissions() int    // Return a combination of Read and Write.
 	Get(Encoder) error // Writes the resource to the given encoder.
 	Set(Decoder) error // Handles an attempt to set the resource.
+	Create(Decoder) error
 }
 
 // Regular expressions for the various resources.
@@ -87,6 +89,10 @@ func (l *projectList) Get(enc Encoder) error {
 // Set for a projectList allows a login to unsubscribe themselves from projects.
 func (l *projectList) Set(dec Decoder) error {
 	// TODO: We don't implement this as it is nontrivial...
+	return nil
+}
+
+func (l *projectList) Create(dec Decoder) error {
 	return nil
 }
 
@@ -149,6 +155,10 @@ func (p *project) Set(dec Decoder) error {
 	return err
 }
 
+func (p *project) Create(dec Decoder) error {
+	return nil
+}
+
 func NewProject(user string, pid uint, db *sql.DB) (Resource, error) {
 	p := project{pid, 0, db}
 	dbpid := 0
@@ -185,6 +195,10 @@ func (f *flag) Get(enc Encoder) error {
 }
 
 func (f *flag) Set(dec Decoder) error {
+	return nil
+}
+
+func (f *flag) Create(dec Decoder) error {
 	return nil
 }
 
