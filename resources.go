@@ -37,9 +37,9 @@ type Decoder interface {
 
 // Interface for the various resource types.
 type Resource interface {
-	Permissions() int    // Return a combination of Read and Write.
-	Get(Encoder) error // Writes the resource to the given encoder.
-	Set(Decoder) error // Handles an attempt to set the resource.
+	Permissions() int
+	Get(Encoder) error
+	Set(Decoder) error
 	Create(Decoder) error
 }
 
@@ -99,6 +99,7 @@ func (l *projectList) Create(dec Decoder) error {
 // removeUser removes the given user from the given project.
 // It also garbage-collects the project by decrementing and checking the
 // viewing counter.
+// FIXME: Implement the garbage collection...
 func removeUser(user string, pid uint, db *sql.DB) error {
 	_, err := db.Exec("DELETE FROM owns WHERE name=? and pid=?", user, pid)
 	if err != nil { return err }
