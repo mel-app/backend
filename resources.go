@@ -45,8 +45,8 @@ type Resource interface {
 
 // Regular expressions for the various resources.
 var (
-	projectListRe = regexp.MustCompile(`\A/projects/?\z`)
-	projectRe     = regexp.MustCompile(`\A/projects/(\d+)/?\z`)
+	projectListRe = regexp.MustCompile(`\A/projects\z`)
+	projectRe     = regexp.MustCompile(`\A/projects/(\d+)\z`)
 	flagRe        = regexp.MustCompile(`\A/projects/(\d+)/flag\z`)
 	deliverableRe = regexp.MustCompile(`\A/projects/(\d+)/deliverables\z`)
 )
