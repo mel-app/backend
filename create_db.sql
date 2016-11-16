@@ -2,12 +2,13 @@
 CREATE TABLE users (
     name NVARCHAR(320) PRIMARY KEY, -- 320 is the maximum email length.
     salt CHAR(256),
-    password CHAR(256) -- Password is salted and encrypted.
+    password CHAR(256), -- Password is salted and encrypted.
+    is_manager BOOL -- True if the user is also a manager (can create projects).
 );
 CREATE TABLE projects (
     id INT PRIMARY KEY, -- Is this required??
     name NVARCHAR(100), -- Type??
-    percentage SMALLINT, -- Needs constraint...
+    percentage SMALLINT CHECK (percentage >= 0 and percentage <= 100),
     description NVARCHAR(512), -- Size??
     flag BOOL
 );
