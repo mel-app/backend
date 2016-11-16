@@ -19,10 +19,10 @@ import (
 var InvalidResource error = fmt.Errorf("Invalid resource\n")
 var InvalidBody error = fmt.Errorf("Invalid body\n")
 
-// Read/Write permission types.
+// Get/Set permission types.
 const (
-	Read = 1 << iota
-	Write
+	Get = 1 << iota
+	Set
 )
 
 // Interface abstracting encoders.
@@ -37,7 +37,7 @@ type Decoder interface {
 // Interface for the various resource types.
 type Resource interface {
 	Permissions() int    // Return a combination of Read and Write.
-	Write(Encoder) error // Writes the resource to the given encoder.
+	Get(Encoder) error // Writes the resource to the given encoder.
 	Set(Decoder) error // Handles an attempt to set the resource.
 }
 
@@ -55,10 +55,10 @@ type projectList struct {
 }
 
 func (_ *projectList) Permissions() int {
-	return Read | Write
+	return Get | Set
 }
 
-func (l *projectList) Write(enc Encoder) error {
+func (l *projectList) Get(enc Encoder) error {
 	for _, table := range []string{"views", "owns"} {
 		rows, err := l.db.Query(fmt.Sprintf("SELECT pid FROM %s WHERE name=?", table), l.user)
 		if err != nil {
@@ -110,7 +110,7 @@ func (p *project) Permissions() int {
 	return p.permissions
 }
 
-func (p *project) Write(enc Encoder) error {
+func (p *project) Get(enc Encoder) error {
 	name, percentage, description := "", "", ""
 	err := p.db.QueryRow("SELECT name, percentage, description FROM projects WHERE id=?", p.pid).Scan(&name, &percentage, &description)
 	if err != nil {
@@ -154,7 +154,7 @@ func NewProject(user string, pid uint, db *sql.DB) (Resource, error) {
 	dbpid := 0
 	err := db.QueryRow("SELECT pid FROM views WHERE name=? and pid=?", user, pid).Scan(&dbpid)
 	if err == nil {
-		p.permissions |= Read
+		p.permissions |= Get
 	} else if err != sql.ErrNoRows {
 		return nil, err
 	}
@@ -169,13 +169,13 @@ type flag struct {
 
 func (f *flag) Permissions() int {
 	// Everyone can read and write to the flag.
-	if Read&f.project.Permissions() != 0 {
-		return Read | Write
+	if Get&f.project.Permissions() != 0 {
+		return Get | Set
 	}
 	return 0
 }
 
-func (f *flag) Write(enc Encoder) error {
+func (f *flag) Get(enc Encoder) error {
 	flag := false
 	err := f.db.QueryRow("SELECT flag FROM projects WHERE id=?", f.pid).Scan(&flag)
 	if err != nil {

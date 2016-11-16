@@ -97,7 +97,7 @@ func authenticateUser(fail func(int), request *http.Request, db *sql.DB) (user s
 // authenticateRequest checks that the given user has permission to complete
 // the request.
 func authenticateRequest(request *http.Request, resource Resource) (ok bool) {
-	return ((request.Method == http.MethodGet) && (resource.Permissions()&Read != 0)) || ((request.Method == http.MethodPut) && (resource.Permissions()&Write != 0))
+	return ((request.Method == http.MethodGet) && (resource.Permissions()&Get != 0)) || ((request.Method == http.MethodPut) && (resource.Permissions()&Set != 0))
 }
 
 // Handle a single HTTP request.
@@ -137,10 +137,9 @@ func handle(writer http.ResponseWriter, request *http.Request) {
 	// Respond.
 	switch request.Method {
 	case http.MethodGet:
-		// Write a response.
 		enc := json.NewEncoder(writer)
 		enc.SetEscapeHTML(true)
-		err = resource.Write(enc)
+		err = resource.Get(enc)
 		if err != nil {
 			internalError(fail, err)
 		}
