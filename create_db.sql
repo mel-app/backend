@@ -11,6 +11,11 @@ CREATE TABLE projects (
     description NVARCHAR(512), -- Size??
     flag BOOL
 );
+CREATE TABLE owns (
+    name NVARCHAR(320) REFERENCES users,
+    pid INT REFERENCES projects,
+    PRIMARY KEY (name, pid)
+);
 CREATE TABLE views (
     name NVARCHAR(320) REFERENCES users,
     pid INT REFERENCES projects,

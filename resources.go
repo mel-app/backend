@@ -17,6 +17,7 @@ import (
 )
 
 var InvalidResource error = fmt.Errorf("Invalid resource\n")
+var InvalidBody error = fmt.Errorf("Invalid body\n")
 
 // Read/Write permission types.
 const (
@@ -28,11 +29,16 @@ const (
 type Encoder interface {
 	Encode(interface{}) error
 }
+type Decoder interface {
+	Decode(interface{}) error
+	More() bool
+}
 
 // Interface for the various resource types.
 type Resource interface {
 	Permissions() int    // Return a combination of Read and Write.
 	Write(Encoder) error // Writes the resource to the given encoder.
+	Set(Decoder) error // Handles an attempt to set the resource.
 }
 
 // Regular expressions for the various resources.
@@ -53,23 +59,44 @@ func (_ *projectList) Permissions() int {
 }
 
 func (l *projectList) Write(enc Encoder) error {
-	rows, err := l.db.Query("SELECT pid FROM views WHERE name=?", l.user)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
+	for _, table := range []string{"views", "owns"} {
+		rows, err := l.db.Query(fmt.Sprintf("SELECT pid FROM %s WHERE name=?", table), l.user)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
 
-	for rows.Next() {
-		id := -1
-		err = rows.Scan(&id)
-		if err != nil {
-			return err
+		for rows.Next() {
+			id := -1
+			err = rows.Scan(&id)
+			if err != nil {
+				return err
+			}
+			err = enc.Encode(id)
+			if err != nil {
+				return err
+			}
 		}
-		err = enc.Encode(id)
-		if err != nil {
-			return err
+		if rows.Err() != nil {
+			return rows.Err()
 		}
 	}
+	return nil
+}
+
+// Set for a projectList allows a login to unsubscribe themselves from projects.
+func (l *projectList) Set(dec Decoder) error {
+	// TODO: We don't implement this as it is nontrivial...
+	return nil
+}
+
+// removeUser removes the given user from the given project.
+// It also garbage-collects the project by decrementing and checking the
+// viewing counter.
+func removeUser(user string, pid uint, db *sql.DB) error {
+	_, err := db.Exec("DELETE FROM owns WHERE name=? and pid=?", user, pid)
+	if err != nil { return err }
+	_, err = db.Exec("DELETE FROM views WHERE name=? and pid=?", user, pid)
 	return err
 }
 
@@ -98,6 +125,28 @@ func (p *project) Write(enc Encoder) error {
 		return err
 	}
 	return enc.Encode(description)
+}
+
+// Set the project state on the server.
+// We override any existing state as I have not implemented any kind
+// of synchronisation.
+// FIXME: Add synchronisation.
+func (p *project) Set(dec Decoder) error {
+	name, percentage, description := "", "", ""
+	err := dec.Decode(&name)
+	if err != nil {
+		return err
+	}
+	err = dec.Decode(&percentage)
+	if err != nil {
+		return err
+	}
+	err = dec.Decode(&description)
+	if err != nil {
+		return err
+	}
+	_, err = p.db.Exec("UPDATE projects SET name=?, percentage=?, description=? WHERE pid=?", name, percentage, description, p.pid)
+	return err
 }
 
 func NewProject(user string, pid uint, db *sql.DB) (Resource, error) {
@@ -133,6 +182,10 @@ func (f *flag) Write(enc Encoder) error {
 		return err
 	}
 	return enc.Encode(flag)
+}
+
+func (f *flag) Set(dec Decoder) error {
+	return nil
 }
 
 func NewFlag(user string, pid uint, db *sql.DB) (Resource, error) {
