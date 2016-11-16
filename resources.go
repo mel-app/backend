@@ -93,6 +93,7 @@ func (l *projectList) Set(dec Decoder) error {
 }
 
 func (l *projectList) Create(dec Decoder) error {
+	// This is implemented in the authentication code.
 	return nil
 }
 
@@ -166,6 +167,13 @@ func NewProject(user string, pid uint, db *sql.DB) (Resource, error) {
 	err := db.QueryRow("SELECT pid FROM views WHERE name=? and pid=?", user, pid).Scan(&dbpid)
 	if err == nil {
 		p.permissions |= Get
+	} else if err != sql.ErrNoRows {
+		return nil, err
+	}
+	is_manager := false
+	err = db.QueryRow("SELECT is_manager FROM users WHERE name=?", user).Scan(&is_manager)
+	if err == nil {
+		p.permissions |= Create
 	} else if err != sql.ErrNoRows {
 		return nil, err
 	}
