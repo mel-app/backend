@@ -212,8 +212,10 @@ func NewProject(user string, pid uint, db *sql.DB) (Resource, error) {
 	is_manager := false
 	err := db.QueryRow("SELECT is_manager FROM users WHERE name=?", user).Scan(&is_manager)
 	if err == nil {
-		p.permissions |= Create
-	} else if err != sql.ErrNoRows {
+		if is_manager {
+			p.permissions |= Create
+		}
+	} else {
 		return nil, err
 	}
 	return &p, nil
