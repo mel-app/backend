@@ -32,7 +32,6 @@ type Encoder interface {
 }
 type Decoder interface {
 	Decode(interface{}) error
-	More() bool
 }
 
 // Interface for the various resource types.
