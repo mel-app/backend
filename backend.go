@@ -67,7 +67,7 @@ func authenticateUser(fail func(int), request *http.Request, db *sql.DB) (user s
 			internalError(fail, err)
 			return user, false
 		}
-		_, err = db.Exec("INSERT INTO users VALUES (?, ?, ?)", user, salt, key)
+		_, err = db.Exec("INSERT INTO users VALUES (?, ?, ?, ?)", user, salt, key, false)
 		if err != nil {
 			internalError(fail, err)
 			return user, false
@@ -82,6 +82,11 @@ func authenticateUser(fail func(int), request *http.Request, db *sql.DB) (user s
 	}
 
 	// Check the password.
+	if string(dbpassword) == "" {
+		// Special case an empty password in the database.
+		// This lets us create "public" demonstration accounts.
+		return user, true
+	}
 	key, err := encryptPassword(password, salt)
 	if err != nil {
 		internalError(fail, err)

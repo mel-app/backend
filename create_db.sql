@@ -34,3 +34,6 @@ CREATE TABLE views (
 -- Populate the projects table.
 INSERT INTO projects VALUES (0, "Test Project 1", 30, "First test project", 1);
 INSERT INTO projects VALUES (1, "Test Project 2", 80, "Second test project", 0);
+INSERT INTO users VALUES ("test", "", "", "true"); -- Demo account.
+INSERT INTO owns VALUES ("test", 0);
+INSERT INTO views VALUES ("test", 1);
