@@ -57,7 +57,7 @@ type projectList struct {
 }
 
 func (_ *projectList) Permissions() int {
-	return Get | Set
+	return Get | Set | Create
 }
 
 func (l *projectList) Get(enc Encoder) error {
