@@ -11,6 +11,7 @@ import (
     "database/sql"
     "fmt"
     "testing"
+    "reflect"
     "gopkg.in/DATA-DOG/go-sqlmock.v1"
 )
 
@@ -21,6 +22,21 @@ type MockEncoder struct {
 func (e *MockEncoder) Encode(item interface{}) error {
     e.contents = append(e.contents, fmt.Sprintf("%v", item))
     return nil
+}
+
+type MockDecoder struct {
+    contents []string
+    cur int
+}
+
+func (d *MockDecoder) Decode(item interface{}) error {
+    if d.cur < len(d.contents) {
+        reflect.ValueOf(item).Elem().SetString(d.contents[d.cur])
+        d.cur += 1
+        return nil
+    } else {
+        return fmt.Errorf("Too many items decoded!")
+    }
 }
 
 func TestProjectListPermissions(t *testing.T) {
@@ -140,4 +156,35 @@ func TestProjectGet(t *testing.T) {
     if err != nil {
         t.Errorf("Expectations were not met: %q", err)
     }
+}
+
+func TestProjectSet(t *testing.T) {
+    // TODO: Add test cases for synchronisation.
+    db, mock, err := sqlmock.New()
+    if err != nil {
+        t.Fatalf("opening database: %s", err)
+    }
+
+    p := project{1, 0, db, "test"}
+
+    check := func(t *testing.T, d MockDecoder, expErr error) {
+        if expErr == nil {
+            mock.ExpectExec("UPDATE projects SET .* WHERE id=.*").WithArgs("test proj", "10", "Desc", 1).WillReturnResult(sqlmock.NewResult(0, 0))
+        }
+        err := p.Set(&d)
+        if err != expErr {
+            t.Errorf("Expected error %v, got %v!", expErr, err)
+        }
+        err = mock.ExpectationsWereMet()
+        if err != nil {
+            t.Errorf("Expectations were not met: %q", err)
+        }
+    }
+
+    t.Run("Empty body", func(t *testing.T) {
+        check(t, MockDecoder{[]string{}, 0}, InvalidBody)
+    })
+    t.Run("Full body", func(t *testing.T) {
+        check(t, MockDecoder{[]string{"test proj", "10", "Desc"}, 0}, nil)
+    })
 }
