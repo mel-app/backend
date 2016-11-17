@@ -18,6 +18,7 @@ import (
 
 var InvalidResource error = fmt.Errorf("Invalid resource\n")
 var InvalidBody error = fmt.Errorf("Invalid body\n")
+var InvalidMethod error = fmt.Errorf("Invalid method\n")
 
 // Get/Set permission types.
 const (
@@ -89,7 +90,7 @@ func (l *projectList) Get(enc Encoder) error {
 // Set for a projectList allows a login to unsubscribe themselves from projects.
 func (l *projectList) Set(dec Decoder) error {
 	// TODO: We don't implement this as it is nontrivial...
-	return nil
+	return InvalidMethod
 }
 
 func (l *projectList) Create(dec Decoder) error {
@@ -234,11 +235,11 @@ func (f *flag) Get(enc Encoder) error {
 }
 
 func (f *flag) Set(dec Decoder) error {
-	return nil
+	return InvalidMethod
 }
 
 func (f *flag) Create(dec Decoder) error {
-	return nil
+	return InvalidMethod // Can't create a flag.
 }
 
 func NewFlag(user string, pid uint, db *sql.DB) (Resource, error) {
@@ -283,11 +284,11 @@ func (c *clients) Get(enc Encoder) error {
 }
 
 func (c *clients) Set(dec Decoder) error {
-	return nil
+	return InvalidMethod
 }
 
 func (c *clients) Create(dec Decoder) error {
-	return nil
+	return InvalidMethod // Can't create a clients resource.
 }
 
 func NewClients(user string, pid uint, db *sql.DB) (Resource, error) {

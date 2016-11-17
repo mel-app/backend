@@ -145,25 +145,19 @@ func handle(writer http.ResponseWriter, request *http.Request) {
 		enc := json.NewEncoder(writer)
 		enc.SetEscapeHTML(true)
 		err = resource.Get(enc)
-		if err != nil {
-			internalError(fail, err)
-		}
 	case http.MethodPut:
 		err = resource.Set(json.NewDecoder(request.Body))
-		if err == InvalidBody {
-			fail(http.StatusBadRequest)
-		} else if err != nil {
-			internalError(fail, err)
-		}
 	case http.MethodPost:
 		err = resource.Create(json.NewDecoder(request.Body))
-		if err == InvalidBody {
-			fail(http.StatusBadRequest)
-		} else if err != nil {
-			internalError(fail, err)
-		}
 	default:
+		err = InvalidMethod
+	}
+	if err == InvalidBody {
+		fail(http.StatusBadRequest)
+	} else if err == InvalidMethod {
 		fail(http.StatusMethodNotAllowed)
+	} else if err != nil {
+		internalError(fail, err)
 	}
 }
 
