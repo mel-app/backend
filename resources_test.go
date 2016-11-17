@@ -118,3 +118,26 @@ func TestProjectPermissions(t *testing.T) {
         check(t, Get | Set | Create)
     })
 }
+
+func TestProjectGet(t *testing.T) {
+    db, mock, err := sqlmock.New()
+    if err != nil {
+        t.Fatalf("opening database: %s", err)
+    }
+
+    mock.ExpectQuery("SELECT .* FROM projects WHERE id=?").WillReturnRows(sqlmock.NewRows([]string{"name", "percentage", "description"}).AddRow("test proj", "10", "Desc"))
+
+    p := project{0, 0, db, "test"}
+    e := MockEncoder{[]string{}}
+    err = p.Get(&e)
+    if err != nil {
+        t.Errorf("Unexpected error %q", err)
+    }
+    if len(e.contents) != 3 || e.contents[0] != "test proj" || e.contents[1] != "10" || e.contents[2] != "Desc" {
+        t.Errorf("Expected 'test proj 10 Desc', got %q", e.contents)
+    }
+    err = mock.ExpectationsWereMet()
+    if err != nil {
+        t.Errorf("Expectations were not met: %q", err)
+    }
+}
