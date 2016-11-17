@@ -164,14 +164,17 @@ func (p *project) Create(dec Decoder) error {
 func NewProject(user string, pid uint, db *sql.DB) (Resource, error) {
 	p := project{pid, 0, db}
 	dbpid := 0
-	err := db.QueryRow("SELECT pid FROM views WHERE name=? and pid=?", user, pid).Scan(&dbpid)
-	if err == nil {
-		p.permissions |= Get
-	} else if err != sql.ErrNoRows {
-		return nil, err
+	for _, table := range []string{"views", "owns"} {
+		err := db.QueryRow(fmt.Sprintf("SELECT pid FROM %s WHERE name=? and pid=?", table), user, pid).Scan(&dbpid)
+		if err == nil {
+			p.permissions |= Get
+		} else if err != sql.ErrNoRows {
+			return nil, err
+		}
 	}
+
 	is_manager := false
-	err = db.QueryRow("SELECT is_manager FROM users WHERE name=?", user).Scan(&is_manager)
+	err := db.QueryRow("SELECT is_manager FROM users WHERE name=?", user).Scan(&is_manager)
 	if err == nil {
 		p.permissions |= Create
 	} else if err != sql.ErrNoRows {
