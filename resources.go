@@ -47,6 +47,7 @@ var (
 	projectListRe = regexp.MustCompile(`\A/projects\z`)
 	projectRe     = regexp.MustCompile(`\A/projects/(\d+)\z`)
 	flagRe        = regexp.MustCompile(`\A/projects/(\d+)/flag\z`)
+	clientsRe     = regexp.MustCompile(`\A/projects/(\d+)/clients\z`)
 	deliverableRe = regexp.MustCompile(`\A/projects/(\d+)/deliverables\z`)
 )
 
@@ -100,7 +101,7 @@ type project struct {
 	pid         uint
 	permissions int
 	db          *sql.DB
-	user		string
+	user        string
 }
 
 func (p *project) Permissions() int {
@@ -245,6 +246,55 @@ func NewFlag(user string, pid uint, db *sql.DB) (Resource, error) {
 	return &flag{pid, proj, db}, err
 }
 
+type clients struct {
+	pid     uint
+	project Resource
+	db      *sql.DB
+}
+
+func (c *clients) Permissions() int {
+	if c.project.Permissions()&Set != 0 {
+		return Get | Set
+	} else if c.project.Permissions()&Get != 0 {
+		return Get
+	}
+	return 0
+}
+
+func (c *clients) Get(enc Encoder) error {
+	rows, err := c.db.Query("SELECT name FROM views WHERE pid=?", c.pid)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		id := ""
+		err = rows.Scan(&id)
+		if err != nil {
+			return err
+		}
+		err = enc.Encode(id)
+		if err != nil {
+			return err
+		}
+	}
+	return rows.Err()
+}
+
+func (c *clients) Set(dec Decoder) error {
+	return nil
+}
+
+func (c *clients) Create(dec Decoder) error {
+	return nil
+}
+
+func NewClients(user string, pid uint, db *sql.DB) (Resource, error) {
+	proj, err := NewProject(user, pid, db)
+	return &clients{pid, proj, db}, err
+}
+
 // FromURI returns the resource corresponding to the given URI.
 func FromURI(user, uri string, db *sql.DB) (Resource, error) {
 	// Match the path to the regular expressions.
@@ -262,6 +312,12 @@ func FromURI(user, uri string, db *sql.DB) (Resource, error) {
 			return nil, err
 		}
 		return NewFlag(user, uint(pid), db)
+	} else if clientsRe.MatchString(uri) {
+		pid, err := strconv.Atoi(clientsRe.FindStringSubmatch(uri)[1])
+		if err != nil {
+			return nil, err
+		}
+		return NewClients(user, uint(pid), db)
 	} else {
 		return nil, InvalidResource
 	}
