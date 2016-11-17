@@ -112,6 +112,7 @@ type project struct {
 	pid         uint
 	permissions int
 	db          *sql.DB
+	user		string
 }
 
 func (p *project) Permissions() int {
@@ -143,31 +144,66 @@ func (p *project) Set(dec Decoder) error {
 	name, percentage, description := "", "", ""
 	err := dec.Decode(&name)
 	if err != nil {
-		return err
+		return InvalidBody
 	}
 	err = dec.Decode(&percentage)
 	if err != nil {
-		return err
+		return InvalidBody
 	}
 	err = dec.Decode(&description)
 	if err != nil {
-		return err
+		return InvalidBody
 	}
-	_, err = p.db.Exec("UPDATE projects SET name=?, percentage=?, description=? WHERE pid=?", name, percentage, description, p.pid)
+	_, err = p.db.Exec("UPDATE projects SET name=?, percentage=?, description=? WHERE id=?", name, percentage, description, p.pid)
 	return err
 }
 
+// Create a new project on the server, and assign the user as the owner.
 func (p *project) Create(dec Decoder) error {
-	return nil
+	// Begin by generating an unused ID for the project.
+	// TODO: This is ugly and probably prone to race conditions (no locking between requests).
+	id := -1
+	var err error = nil
+	for err != sql.ErrNoRows {
+		id += 1
+		err = p.db.QueryRow("SELECT id FROM projects WHERE id=?", id).Scan(&id)
+	}
+
+	// Now create the project.
+	name, percentage, description := "", "0", ""
+	err = dec.Decode(&name)
+	if err != nil {
+		return InvalidBody
+	}
+	err = dec.Decode(&percentage)
+	if err != nil {
+		return InvalidBody
+	}
+	err = dec.Decode(&description)
+	if err != nil {
+		return InvalidBody
+	}
+	_, err = p.db.Exec("INSERT INTO projects VALUES (?, ?, ?, ?, ?)", id, name, percentage, description, false)
+	if err != nil {
+		return err
+	}
+
+	// Add the user to the project.
+	_, err = p.db.Exec("INSERT INTO owns VALUES (?, ?)", p.user, id)
+	return err
 }
 
 func NewProject(user string, pid uint, db *sql.DB) (Resource, error) {
-	p := project{pid, 0, db}
+	p := project{pid, 0, db, user}
 	dbpid := 0
 	for _, table := range []string{"views", "owns"} {
 		err := db.QueryRow(fmt.Sprintf("SELECT pid FROM %s WHERE name=? and pid=?", table), user, pid).Scan(&dbpid)
 		if err == nil {
-			p.permissions |= Get
+			if table == "owns" {
+				p.permissions |= Get | Set
+			} else {
+				p.permissions |= Get
+			}
 		} else if err != sql.ErrNoRows {
 			return nil, err
 		}
