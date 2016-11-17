@@ -97,17 +97,6 @@ func (l *projectList) Create(dec Decoder) error {
 	return nil
 }
 
-// removeUser removes the given user from the given project.
-// It also garbage-collects the project by decrementing and checking the
-// viewing counter.
-// FIXME: Implement the garbage collection...
-func removeUser(user string, pid uint, db *sql.DB) error {
-	_, err := db.Exec("DELETE FROM owns WHERE name=? and pid=?", user, pid)
-	if err != nil { return err }
-	_, err = db.Exec("DELETE FROM views WHERE name=? and pid=?", user, pid)
-	return err
-}
-
 type project struct {
 	pid         uint
 	permissions int
