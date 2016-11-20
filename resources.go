@@ -33,6 +33,7 @@ type Encoder interface {
 }
 type Decoder interface {
 	Decode(interface{}) error
+	More() bool
 }
 
 // Interface for the various resource types.
@@ -41,6 +42,18 @@ type Resource interface {
 	Get(Encoder) error
 	Set(Decoder) error
 	Create(Decoder) error
+}
+
+// Fake encoder to allow extracting the current state from a Get call.
+type MapEncoder struct {
+	current map[string]bool
+}
+
+func (m *MapEncoder) Encode(item interface{}) error {
+	// FIXME: This is pretty ugly and inflexible. Perhaps use reflection
+	//  instead?
+	m.current[fmt.Sprintf("%v", item)] = true
+	return nil
 }
 
 // Regular expressions for the various resources.
@@ -256,8 +269,6 @@ type clients struct {
 func (c *clients) Permissions() int {
 	if c.project.Permissions()&Set != 0 {
 		return Get | Set
-	} else if c.project.Permissions()&Get != 0 {
-		return Get
 	}
 	return 0
 }
@@ -284,7 +295,47 @@ func (c *clients) Get(enc Encoder) error {
 }
 
 func (c *clients) Set(dec Decoder) error {
-	return InvalidMethod
+	// TODO: Implement syncronisation.
+	// FIXME: We don't validate the user names.
+
+	// Populate the list of users in the database.
+	old := map[string]bool{} // user->removed
+	enc := MapEncoder{old}
+	err := c.Get(&enc)
+	if err != nil {
+		return err
+	}
+
+	// Find added clients and update the list.
+	for dec.More() {
+		user := ""
+		err = dec.Decode(&user)
+		if err != nil {
+			return InvalidBody
+		}
+		if _, ok := old[user]; !ok {
+			// New user; add it to the database.
+			_, err = c.db.Exec("INSERT INTO views VALUES (?, ?)", user, c.pid)
+			if err != nil {
+				return err
+			}
+		} else {
+			// Mark the user as 'found'
+			old[user] = false
+		}
+	}
+
+	// Find old clients and remove them.
+	for key, removed := range old {
+		if removed {
+			_, err = c.db.Exec("DELETE FROM views WHERE name=? and pid=?", key, c.pid)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func (c *clients) Create(dec Decoder) error {
