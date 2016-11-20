@@ -193,7 +193,52 @@ func TestProjectSet(t *testing.T) {
 	})
 }
 
-func TestClientSet(t *testing.T) {
+func TestClientsPermissions(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("opening database: %s", err)
+	}
+
+	initDB := func(t *testing.T, views, owns bool) {
+		q := mock.ExpectQuery("SELECT pid FROM views WHERE .*").WillReturnRows(sqlmock.NewRows([]string{"pid"}).AddRow(0))
+		if !views {
+			q.WillReturnError(sql.ErrNoRows)
+		}
+		q = mock.ExpectQuery("SELECT pid FROM owns WHERE .*").WillReturnRows(sqlmock.NewRows([]string{"pid"}).AddRow(0))
+		if !owns {
+			q.WillReturnError(sql.ErrNoRows)
+		}
+		q = mock.ExpectQuery("SELECT is_manager FROM users WHERE name=?").WillReturnRows(sqlmock.NewRows([]string{"is_manager"}).AddRow(owns))
+	}
+
+	check := func(t *testing.T, expected int) {
+		c, err := NewClients("test", 0, db)
+		if err != nil {
+			t.Fatalf("Unexpected error %q", err)
+		}
+		if c == nil {
+			t.Fatalf("Returned clients is unexpectedly nil!")
+		}
+		if c.Permissions() != expected {
+			t.Errorf("Expected permissions %b, got %b", expected, c.Permissions())
+		}
+		err = mock.ExpectationsWereMet()
+		if err != nil {
+			t.Errorf("Expectations were not met: %q", err)
+		}
+	}
+
+	t.Run("Views", func(t *testing.T) {
+		initDB(t, true, false)
+		check(t, 0)
+	})
+	t.Run("Owns", func(t *testing.T) {
+		initDB(t, false, true)
+		check(t, Get|Set)
+	})
+}
+
+func TestClientsSet(t *testing.T) {
 	// TODO: Add test cases for synchronisation.
 	db, mock, err := sqlmock.New()
 	if err != nil {
@@ -252,7 +297,7 @@ func TestClientSet(t *testing.T) {
 		check(t, []string{}, []string{})
 	})
 	t.Run("Remove", func(t *testing.T) {
-		check(t, []string{"2"}, []string{"1", "2"} )
+		check(t, []string{"2"}, []string{"1", "2"})
 	})
 	t.Run("Add", func(t *testing.T) {
 		check(t, []string{"1", "2", "3"}, []string{"2", "3"})
