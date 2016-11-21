@@ -58,11 +58,12 @@ func (m *MapEncoder) Encode(item interface{}) error {
 
 // Regular expressions for the various resources.
 var (
-	projectListRe = regexp.MustCompile(`\A/projects\z`)
-	projectRe     = regexp.MustCompile(`\A/projects/(\d+)\z`)
-	flagRe        = regexp.MustCompile(`\A/projects/(\d+)/flag\z`)
-	clientsRe     = regexp.MustCompile(`\A/projects/(\d+)/clients\z`)
-	deliverableRe = regexp.MustCompile(`\A/projects/(\d+)/deliverables\z`)
+	projectListRe	  = regexp.MustCompile(`\A/projects\z`)
+	projectRe		  = regexp.MustCompile(`\A/(\d+)\z`)
+	flagRe            = regexp.MustCompile(`\A/(\d+)/flag\z`)
+	clientsRe         = regexp.MustCompile(`\A/(\d+)/clients\z`)
+	deliverableListRe = regexp.MustCompile(`\A/(\d+)/deliverables\z`)
+	deliverableRe     = regexp.MustCompile(`\A/(\d+)/(\d+)\z`)
 )
 
 type projectList struct {

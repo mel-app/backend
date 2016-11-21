@@ -22,12 +22,12 @@ dID: deliverable ID
 Note that I should url encode the ID's if I am using names, and unencode them
 otherwise.
 
-- projects/: list of projects accessible to the user, can-create permissions
-- projects/pID: project properties (percentage, description)
-- projects/pID/flag: current flag state
-- projects/pID/clients: list of project clients
-- projects/pID/deliverables: list of project deliverables
-- projects/pID/dID: deliverable state
+- projects: list of projects accessible to the user, can-create permissions
+- pID: project properties (percentage, description)
+- pID/flag: current flag state
+- pID/clients: list of project clients
+- pID/deliverables: list of project deliverables
+- pID/dID: deliverable state
 
 Use PUT to update existing objects, POST to request creating a new object, and GET to get the current state.
 
