@@ -58,8 +58,8 @@ func (m *MapEncoder) Encode(item interface{}) error {
 
 // Regular expressions for the various resources.
 var (
-	projectListRe	  = regexp.MustCompile(`\A/projects\z`)
-	projectRe		  = regexp.MustCompile(`\A/(\d+)\z`)
+	projectListRe     = regexp.MustCompile(`\A/projects\z`)
+	projectRe         = regexp.MustCompile(`\A/(\d+)\z`)
 	flagRe            = regexp.MustCompile(`\A/(\d+)/flag\z`)
 	clientsRe         = regexp.MustCompile(`\A/(\d+)/clients\z`)
 	deliverableListRe = regexp.MustCompile(`\A/(\d+)/deliverables\z`)
@@ -283,7 +283,7 @@ func (f *flag) Set(dec Decoder) error {
 	// Otherwise, just use the server version.
 	if update.Version == cur.Version && update.Value != cur.Value {
 		_, err = f.db.Exec("UPDATE projects SET flag=?, flag_version=? WHERE id=?",
-			update.Value, update.Version + 1, f.pid)
+			update.Value, update.Version+1, f.pid)
 		return err
 	}
 	return nil
@@ -385,6 +385,55 @@ func NewClients(user string, pid uint, db *sql.DB) (Resource, error) {
 	return &clients{pid, proj, db}, err
 }
 
+type deliverableList struct {
+	pid     uint
+	project Resource
+	db      *sql.DB
+}
+
+func (l *deliverableList) Permissions() int {
+	if Set&l.project.Permissions() != 0 {
+		return Get | Set
+	} else if Get&l.project.Permissions() != 0 {
+		return Get
+	}
+	return 0
+}
+
+func (l *deliverableList) Get(enc Encoder) error {
+	rows, err := l.db.Query("SELECT id FROM deliverables WHERE pid=?", l.pid)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		id := -1
+		err = rows.Scan(&id)
+		if err != nil {
+			return err
+		}
+		err = enc.Encode(id)
+		if err != nil {
+			return err
+		}
+	}
+	return rows.Err()
+}
+
+func (l *deliverableList) Set(dec Decoder) error {
+	return InvalidMethod
+}
+
+func (l *deliverableList) Create(dec Decoder) error {
+	return InvalidMethod // Can't create a deliverable list.
+}
+
+func NewDeliverableList(user string, pid uint, db *sql.DB) (Resource, error) {
+	proj, err := NewProject(user, pid, db)
+	return &deliverableList{pid, proj, db}, err
+}
+
 // FromURI returns the resource corresponding to the given URI.
 func FromURI(user, uri string, db *sql.DB) (Resource, error) {
 	// Match the path to the regular expressions.
@@ -408,6 +457,12 @@ func FromURI(user, uri string, db *sql.DB) (Resource, error) {
 			return nil, err
 		}
 		return NewClients(user, uint(pid), db)
+	} else if deliverableListRe.MatchString(uri) {
+		pid, err := strconv.Atoi(deliverableListRe.FindStringSubmatch(uri)[1])
+		if err != nil {
+			return nil, err
+		}
+		return NewDeliverableList(user, uint(pid), db)
 	} else {
 		return nil, InvalidResource
 	}

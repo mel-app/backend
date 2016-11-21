@@ -14,12 +14,13 @@ CREATE TABLE projects (
     flag_version INT
 );
 CREATE TABLE deliverables (
-    name NVARCHAR(128), -- Type?
+    id INT,
     pid INT,
+    name NVARCHAR(128),
     due DATE,
     percentage SMALLINT CHECK (percentage >= 0 and percentage <= 100),
     description NVARCHAR(512), -- Size??
-    PRIMARY KEY (name, pid)
+    PRIMARY KEY (id, pid)
 );
 CREATE TABLE owns (
     name NVARCHAR(320) REFERENCES users,
