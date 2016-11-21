@@ -434,6 +434,81 @@ func NewDeliverableList(user string, pid uint, db *sql.DB) (Resource, error) {
 	return &deliverableList{pid, proj, db}, err
 }
 
+type deliverable struct {
+	id uint
+	pid     uint
+	project Resource
+	db      *sql.DB
+}
+
+type deliverableValue struct {
+	name string
+	due string
+	percentage uint
+	description string
+}
+
+func (d *deliverable) Permissions() int {
+	if Set&d.project.Permissions() != 0 {
+		return Get | Set | Create
+	} else if Get&d.project.Permissions() != 0 {
+		return Get
+	}
+	return 0
+}
+
+func (d *deliverable) Get(enc Encoder) error {
+	v := deliverableValue{}
+	err := d.db.QueryRow("SELECT name, due, percentage, description FROM deliverables WHERE id=? and pid=?", d.id, d.pid).
+		Scan(&v.name, &v.due, &v.percentage, &v.description)
+	// TODO: We don't validate the resource name while creating it so this
+	//		can crash dramatically...
+	if err != nil {
+		return err
+	}
+	return enc.Encode(v)
+}
+
+func (d *deliverable) Set(dec Decoder) error {
+	v := deliverableValue{}
+	err := dec.Decode(&v)
+	if err != nil {
+		return InvalidBody
+	}
+	_, err = d.db.Exec("UPDATE deliverables SET name=?, due=?, percentage=?, description=? WHERE id=? and pid=?",
+		v.name, v.due, v.percentage, v.description, d.id, d.pid)
+	return err
+}
+
+func (d *deliverable) Create(dec Decoder) error {
+	// Begin by generating an unused ID for the deliverable.
+	// TODO: This is ugly and probably prone to race conditions.
+	// (no locking between requests).
+	// FIXME: This is largely duplicated from the project creation code.
+	id := -1
+	var err error = nil
+	for err != sql.ErrNoRows {
+		id += 1
+		err = d.db.QueryRow("SELECT id FROM deliverables WHERE pid=? and id=?", d.pid, id).Scan(&id)
+	}
+
+	// Now create the project.
+	v := deliverableValue{}
+	err = dec.Decode(&v)
+	if err != nil {
+		return InvalidBody
+	}
+	_, err = d.db.Exec("INSERT INTO deliverables VALUES (?, ?, ?, ?, ?)",
+		id, d.pid, v.name, v.due, v.percentage, v.description)
+	// TODO: This may not be an "internal server error" - check first.
+	return err
+}
+
+func NewDeliverable(user string, id uint, pid uint, db *sql.DB) (Resource, error) {
+	proj, err := NewProject(user, pid, db)
+	return &deliverable{id, pid, proj, db}, err
+}
+
 // FromURI returns the resource corresponding to the given URI.
 func FromURI(user, uri string, db *sql.DB) (Resource, error) {
 	// Match the path to the regular expressions.
@@ -463,6 +538,16 @@ func FromURI(user, uri string, db *sql.DB) (Resource, error) {
 			return nil, err
 		}
 		return NewDeliverableList(user, uint(pid), db)
+	} else if deliverableRe.MatchString(uri) {
+		pid, err := strconv.Atoi(deliverableRe.FindStringSubmatch(uri)[1])
+		if err != nil {
+			return nil, err
+		}
+		id, err := strconv.Atoi(deliverableRe.FindStringSubmatch(uri)[2])
+		if err != nil {
+			return nil, err
+		}
+		return NewDeliverable(user, uint(id), uint(pid), db)
 	} else {
 		return nil, InvalidResource
 	}
