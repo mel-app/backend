@@ -230,6 +230,61 @@ func TestClientsPermissions(t *testing.T) {
 	})
 }
 
+type mockFlagDecoder struct {
+	value versionedFlag
+}
+
+func (f *mockFlagDecoder) Decode(item interface{}) error {
+	reflect.ValueOf(item).Elem().Set(reflect.ValueOf(f.value))
+	return nil
+}
+
+func (f *mockFlagDecoder) More() bool {
+	return false
+}
+
+func TestFlagSet(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("opening database: %s", err)
+	}
+
+	f := flag{1, nil, db}
+
+	check := func(name string, update, existing, result versionedFlag) {
+		t.Run(name, func(t *testing.T) {
+
+			// Expect for the existing value.
+			row := sqlmock.NewRows([]string{"flag", "flag_version"}).
+				AddRow(existing.Value, existing.Version)
+			mock.ExpectQuery("SELECT flag, flag_version FROM projects WHERE .*").
+				WillReturnRows(row).WithArgs(f.pid)
+
+			// Expect for the result.
+			if existing.Value != result.Value {
+				mock.ExpectExec(`UPDATE projects SET flag=\?, flag_version=\? WHERE id=\?`).
+					WillReturnResult(sqlmock.NewResult(0, 0)).
+					WithArgs(result.Value, result.Version, f.pid)
+			}
+
+			err := f.Set(&mockFlagDecoder{update})
+			if err != nil {
+				t.Errorf("Unexpected error %v", err)
+			}
+			err = mock.ExpectationsWereMet()
+			if err != nil {
+				t.Errorf("Expectations were not met: %q", err)
+			}
+		})
+	}
+
+	check("No change", versionedFlag{2, false}, versionedFlag{2, false}, versionedFlag{2, false})
+	check("No change but server version has been incremented", versionedFlag{2, false}, versionedFlag{4, false}, versionedFlag{4, false})
+	check("Server updated", versionedFlag{2, false}, versionedFlag{3, true}, versionedFlag{3, true})
+	check("Client updated", versionedFlag{2, true}, versionedFlag{2, false}, versionedFlag{3, true})
+	check("Client and server updated", versionedFlag{2, true}, versionedFlag{4, false}, versionedFlag{4, false})
+}
+
 func TestClientsSet(t *testing.T) {
 	// TODO: Add test cases for synchronisation.
 	db, mock, err := sqlmock.New()

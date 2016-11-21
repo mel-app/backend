@@ -258,7 +258,35 @@ func (f *flag) Get(enc Encoder) error {
 }
 
 func (f *flag) Set(dec Decoder) error {
-	return InvalidMethod
+	// Decode the uploaded flag.
+	update := versionedFlag{0, false}
+	err := dec.Decode(&update)
+	if err != nil {
+		return InvalidBody
+	}
+
+	// Get the saved flag.
+	cur := versionedFlag{0, false}
+	err = f.db.QueryRow("SELECT flag, flag_version FROM projects WHERE id=?", f.pid).Scan(&(cur.Value), &(cur.Version))
+	if err != nil {
+		return err
+	}
+
+	// Reject invalid versions.
+	if update.Version > cur.Version {
+		return InvalidBody
+	}
+
+	// Compare and sync.
+	// If the version from the client is equal to the version on the server,
+	// use the value from the client and increment the server version.
+	// Otherwise, just use the server version.
+	if update.Version == cur.Version && update.Value != cur.Value {
+		_, err = f.db.Exec("UPDATE projects SET flag=?, flag_version=? WHERE id=?",
+			update.Value, update.Version + 1, f.pid)
+		return err
+	}
+	return nil
 }
 
 func (f *flag) Create(dec Decoder) error {
