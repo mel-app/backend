@@ -235,6 +235,11 @@ type flag struct {
 	db      *sql.DB
 }
 
+type versionedFlag struct {
+	Version uint
+	Value   bool
+}
+
 func (f *flag) Permissions() int {
 	// Everyone can read and write to the flag.
 	if Get&f.project.Permissions() != 0 {
@@ -244,8 +249,8 @@ func (f *flag) Permissions() int {
 }
 
 func (f *flag) Get(enc Encoder) error {
-	flag := false
-	err := f.db.QueryRow("SELECT flag FROM projects WHERE id=?", f.pid).Scan(&flag)
+	flag := versionedFlag{0, false}
+	err := f.db.QueryRow("SELECT flag, flag_version FROM projects WHERE id=?", f.pid).Scan(&(flag.Value), &(flag.Version))
 	if err != nil {
 		return err
 	}
