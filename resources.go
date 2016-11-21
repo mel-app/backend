@@ -101,7 +101,7 @@ func (l *projectList) Get(enc Encoder) error {
 	return nil
 }
 
-// Set for a projectList allows a login to unsubscribe themselves from projects.
+// Set for a projectList allows users to unsubscribe themselves from projects.
 func (l *projectList) Set(dec Decoder) error {
 	// TODO: We don't implement this as it is nontrivial...
 	return InvalidMethod
@@ -165,7 +165,8 @@ func (p *project) Set(dec Decoder) error {
 // Create a new project on the server, and assign the user as the owner.
 func (p *project) Create(dec Decoder) error {
 	// Begin by generating an unused ID for the project.
-	// TODO: This is ugly and probably prone to race conditions (no locking between requests).
+	// TODO: This is ugly and probably prone to race conditions.
+	// (no locking between requests).
 	id := -1
 	var err error = nil
 	for err != sql.ErrNoRows {
@@ -199,6 +200,8 @@ func (p *project) Create(dec Decoder) error {
 
 func NewProject(user string, pid uint, db *sql.DB) (Resource, error) {
 	p := project{pid, 0, db, user}
+
+	// Find the user.
 	dbpid := 0
 	for _, table := range []string{"views", "owns"} {
 		err := db.QueryRow(fmt.Sprintf("SELECT pid FROM %s WHERE name=? and pid=?", table), user, pid).Scan(&dbpid)
@@ -213,6 +216,7 @@ func NewProject(user string, pid uint, db *sql.DB) (Resource, error) {
 		}
 	}
 
+	// Check if the user is a manager.
 	is_manager := false
 	err := db.QueryRow("SELECT is_manager FROM users WHERE name=?", user).Scan(&is_manager)
 	if err == nil {
