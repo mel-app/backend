@@ -74,14 +74,6 @@ func TestProjectListGet(t *testing.T) {
 	}
 }
 
-func TestProjectListSet(t *testing.T) {
-	t.Skip("projectList Set is not yet implemented!")
-}
-
-func TestProjectListCreate(t *testing.T) {
-	t.Skip("projectList Create is implemented elsewhere!")
-}
-
 func TestProjectPermissions(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
