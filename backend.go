@@ -13,7 +13,6 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 
@@ -23,6 +22,10 @@ import (
 )
 
 const passwordSize = 256
+
+// TODO: Should be the actual db, ...
+const dbtype = "sqlite3"
+const dbname = "test.db"
 
 // internalError ends the request and logs an internal error.
 func internalError(fail func(int), err error) {
@@ -105,15 +108,13 @@ func authenticateRequest(request *http.Request, resource Resource) (ok bool) {
 	return ((request.Method == http.MethodGet) && (resource.Permissions()&Get != 0)) || ((request.Method == http.MethodPut) && (resource.Permissions()&Set != 0)) || ((request.Method == http.MethodPost) && (resource.Permissions()&Create != 0))
 }
 
-// Handle a single HTTP request.
+// handle a single HTTP request.
 func handle(writer http.ResponseWriter, request *http.Request) {
 	// Wrapper for failing functions.
 	fail := func(status int) { http.Error(writer, http.StatusText(status), status) }
 
 	// Open the database.
-	// FIXME: I'm using sqlite3 here which only seems to report errors when
-	//	actually executing a query; I'll need to test this on other systems as well.
-	db, err := sql.Open("sqlite3", "test.db") // TODO: Should be the actual db, ...
+	db, err := sql.Open(dbtype, dbname)
 	if err != nil {
 		log.Printf("Error opening DB: %q\n", err)
 		fail(http.StatusInternalServerError)
@@ -161,9 +162,8 @@ func handle(writer http.ResponseWriter, request *http.Request) {
 	}
 }
 
-func main() {
-	fmt.Printf("Starting server on :8080...\n")
-	http.ListenAndServe(":8080", http.HandlerFunc(handle))
+func run(port string) {
+	http.ListenAndServe(port, http.HandlerFunc(handle))
 }
 
 // vim: sw=4 ts=4 noexpandtab
