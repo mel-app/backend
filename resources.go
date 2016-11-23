@@ -60,11 +60,11 @@ func (m *MapEncoder) Encode(item interface{}) error {
 var (
 	loginRe           = regexp.MustCompile(`\A/login\z`)
 	projectListRe     = regexp.MustCompile(`\A/projects\z`)
-	projectRe         = regexp.MustCompile(`\A/(\d+)\z`)
-	flagRe            = regexp.MustCompile(`\A/(\d+)/flag\z`)
-	clientsRe         = regexp.MustCompile(`\A/(\d+)/clients\z`)
-	deliverableListRe = regexp.MustCompile(`\A/(\d+)/deliverables\z`)
-	deliverableRe     = regexp.MustCompile(`\A/(\d+)/(\d+)\z`)
+	projectRe         = regexp.MustCompile(`\A/projects/(\d+)\z`)
+	flagRe            = regexp.MustCompile(`\A/projects/(\d+)/flag\z`)
+	clientsRe         = regexp.MustCompile(`\A/projects/(\d+)/clients\z`)
+	deliverableListRe = regexp.MustCompile(`\A/projects/(\d+)/deliverables\z`)
+	deliverableRe     = regexp.MustCompile(`\A/projects/(\d+)/deliverables/(\d+)\z`)
 )
 
 type projectList struct {
