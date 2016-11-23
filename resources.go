@@ -135,18 +135,18 @@ func (l *login) Create(dec Decoder) error {
 	return nil // Implemented in backend.go as a special case.
 }
 
-type project struct {
+type projectResource struct {
 	pid         uint
 	permissions int
 	db          *sql.DB
 	user        string
 }
 
-func (p *project) Permissions() int {
+func (p *projectResource) Permissions() int {
 	return p.permissions
 }
 
-func (p *project) Get(enc Encoder) error {
+func (p *projectResource) Get(enc Encoder) error {
 	name, percentage, description := "", "", ""
 	err := p.db.QueryRow("SELECT name, percentage, description FROM projects WHERE id=?", p.pid).Scan(&name, &percentage, &description)
 	if err != nil {
@@ -167,7 +167,7 @@ func (p *project) Get(enc Encoder) error {
 // We override any existing state as I have not implemented any kind
 // of synchronisation.
 // FIXME: Add synchronisation.
-func (p *project) Set(dec Decoder) error {
+func (p *projectResource) Set(dec Decoder) error {
 	name, percentage, description := "", "", ""
 	err := dec.Decode(&name)
 	if err != nil {
@@ -186,7 +186,7 @@ func (p *project) Set(dec Decoder) error {
 }
 
 // Create a new project on the server, and assign the user as the owner.
-func (p *project) Create(dec Decoder) error {
+func (p *projectResource) Create(dec Decoder) error {
 	// Begin by generating an unused ID for the project.
 	// TODO: This is ugly and probably prone to race conditions.
 	// (no locking between requests).
@@ -222,7 +222,7 @@ func (p *project) Create(dec Decoder) error {
 }
 
 func NewProject(user string, pid uint, db *sql.DB) (Resource, error) {
-	p := project{pid, 0, db, user}
+	p := projectResource{pid, 0, db, user}
 
 	// Find the user.
 	dbpid := 0
