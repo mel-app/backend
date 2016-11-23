@@ -140,25 +140,27 @@ type projectResource struct {
 	user        string
 }
 
+type project struct {
+	Pid uint
+	Name string
+	Percentage uint
+	Description string
+	Owns bool
+}
+
 func (p *projectResource) Permissions() int {
 	return p.permissions
 }
 
 func (p *projectResource) Get(enc Encoder) error {
-	name, percentage, description := "", "", ""
-	err := p.db.QueryRow("SELECT name, percentage, description FROM projects WHERE id=?", p.pid).Scan(&name, &percentage, &description)
+	name, percentage, description := "", 0, ""
+	err := p.db.QueryRow("SELECT name, percentage, description FROM projects WHERE id=?", p.pid).
+		Scan(&name, &percentage, &description)
 	if err != nil {
 		return err
 	}
-	err = enc.Encode(name)
-	if err != nil {
-		return err
-	}
-	err = enc.Encode(percentage)
-	if err != nil {
-		return err
-	}
-	return enc.Encode(description)
+	project := project{p.pid, name, uint(percentage), description, p.permissions&Set != 0}
+	return enc.Encode(project)
 }
 
 // Set the project state on the server.
@@ -166,20 +168,13 @@ func (p *projectResource) Get(enc Encoder) error {
 // of synchronisation.
 // FIXME: Add synchronisation.
 func (p *projectResource) Set(dec Decoder) error {
-	name, percentage, description := "", "", ""
-	err := dec.Decode(&name)
+	project := project{}
+	err := dec.Decode(&project)
 	if err != nil {
 		return InvalidBody
 	}
-	err = dec.Decode(&percentage)
-	if err != nil {
-		return InvalidBody
-	}
-	err = dec.Decode(&description)
-	if err != nil {
-		return InvalidBody
-	}
-	_, err = p.db.Exec("UPDATE projects SET name=?, percentage=?, description=? WHERE id=?", name, percentage, description, p.pid)
+	_, err = p.db.Exec("UPDATE projects SET name=?, percentage=?, description=? WHERE id=?",
+		project.Name, project.Percentage, project.Description, p.pid)
 	return err
 }
 
@@ -196,20 +191,13 @@ func (p *projectResource) Create(dec Decoder) error {
 	}
 
 	// Now create the project.
-	name, percentage, description := "", "0", ""
-	err = dec.Decode(&name)
+	project := project{}
+	err = dec.Decode(&project)
 	if err != nil {
 		return InvalidBody
 	}
-	err = dec.Decode(&percentage)
-	if err != nil {
-		return InvalidBody
-	}
-	err = dec.Decode(&description)
-	if err != nil {
-		return InvalidBody
-	}
-	_, err = p.db.Exec("INSERT INTO projects VALUES (?, ?, ?, ?, ?)", id, name, percentage, description, false)
+	_, err = p.db.Exec("INSERT INTO projects VALUES (?, ?, ?, ?, ?, ?)",
+		id, project.Name, project.Percentage, project.Description, false, 0)
 	if err != nil {
 		return err
 	}

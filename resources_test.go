@@ -43,6 +43,24 @@ func (d *MockDecoder) More() bool {
 	return d.cur < len(d.contents)
 }
 
+type MockProjectDecoder struct {
+	contents project
+}
+
+func (d *MockProjectDecoder) Decode(item interface{}) error {
+	f := reflect.ValueOf(item).Elem()
+	f.FieldByName("Pid").SetUint(uint64(d.contents.Pid))
+	f.FieldByName("Name").SetString(d.contents.Name)
+	f.FieldByName("Percentage").SetUint(uint64(d.contents.Percentage))
+	f.FieldByName("Description").SetString(d.contents.Description)
+	f.FieldByName("Owns").SetBool(d.contents.Owns)
+	return nil
+}
+
+func (d *MockProjectDecoder) More() bool {
+	return false
+}
+
 func TestProjectListPermissions(t *testing.T) {
 	l := projectList{"", nil}
 	if l.Permissions() != Get {
@@ -145,8 +163,9 @@ func TestProjectGet(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error %q", err)
 	}
-	if len(e.contents) != 3 || e.contents[0] != "test proj" || e.contents[1] != "10" || e.contents[2] != "Desc" {
-		t.Errorf("Expected 'test proj 10 Desc', got %q", e.contents)
+	result := `{0 test proj 10 Desc false}`
+	if len(e.contents) != 1 || e.contents[0] != result {
+		t.Errorf("Expected '%s', got %q", result, e.contents)
 	}
 	err = mock.ExpectationsWereMet()
 	if err != nil {
@@ -163,11 +182,13 @@ func TestProjectSet(t *testing.T) {
 
 	p := projectResource{1, 0, db, "test"}
 
-	check := func(t *testing.T, d MockDecoder, expErr error) {
+	check := func(t *testing.T, d Decoder, expErr error) {
 		if expErr == nil {
-			mock.ExpectExec("UPDATE projects SET .* WHERE id=.*").WithArgs("test proj", "10", "Desc", 1).WillReturnResult(sqlmock.NewResult(0, 0))
+			mock.ExpectExec("UPDATE projects SET .* WHERE id=.*").
+				WithArgs("test proj", 10, "Desc", 1).
+				WillReturnResult(sqlmock.NewResult(0, 0))
 		}
-		err := p.Set(&d)
+		err := p.Set(d)
 		if err != expErr {
 			t.Errorf("Expected error %v, got %v!", expErr, err)
 		}
@@ -177,12 +198,7 @@ func TestProjectSet(t *testing.T) {
 		}
 	}
 
-	t.Run("Empty body", func(t *testing.T) {
-		check(t, MockDecoder{[]string{}, 0}, InvalidBody)
-	})
-	t.Run("Full body", func(t *testing.T) {
-		check(t, MockDecoder{[]string{"test proj", "10", "Desc"}, 0}, nil)
-	})
+	check(t, &MockProjectDecoder{project{1, "test proj", 10, "Desc", false}}, nil)
 }
 
 func TestClientsPermissions(t *testing.T) {
