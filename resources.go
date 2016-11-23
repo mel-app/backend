@@ -73,7 +73,7 @@ type projectList struct {
 }
 
 func (_ *projectList) Permissions() int {
-	return Get | Set | Create
+	return Get
 }
 
 func (l *projectList) Get(enc Encoder) error {
@@ -102,9 +102,7 @@ func (l *projectList) Get(enc Encoder) error {
 	return nil
 }
 
-// Set for a projectList allows users to unsubscribe themselves from projects.
 func (l *projectList) Set(dec Decoder) error {
-	// TODO: We don't implement this as it is nontrivial...
 	return InvalidMethod
 }
 

@@ -45,8 +45,8 @@ func (d *MockDecoder) More() bool {
 
 func TestProjectListPermissions(t *testing.T) {
 	l := projectList{"", nil}
-	if l.Permissions() != Get|Set|Create {
-		t.Errorf("Project list should have all permissions!")
+	if l.Permissions() != Get {
+		t.Errorf("Project list should have only have get permissions!")
 	}
 }
 
