@@ -46,10 +46,11 @@ func encryptPassword(password string, salt []byte) ([]byte, error) {
 }
 
 // authenticateUser checks that the user and password in the given HTTP request.
-func authenticateUser(fail func(int), request *http.Request, db *sql.DB) (user string, ok bool) {
+func authenticateUser(writer http.ResponseWriter, fail func(int), request *http.Request, db *sql.DB) (user string, ok bool) {
 	// Get the user name and password.
 	user, password, ok := request.BasicAuth()
 	if !ok {
+		writer.Header().Add("WWW-Authenticate", "basic realm=\"\"")
 		fail(http.StatusUnauthorized)
 		return user, false
 	}
@@ -121,7 +122,7 @@ func handle(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	// Authenticate the user.
-	user, ok := authenticateUser(fail, request, db)
+	user, ok := authenticateUser(writer, fail, request, db)
 	if !ok {
 		return
 	}
