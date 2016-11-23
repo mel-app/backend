@@ -62,10 +62,42 @@ func (d *MockProjectDecoder) More() bool {
 }
 
 func TestProjectListPermissions(t *testing.T) {
-	l := projectList{"", nil}
-	if l.Permissions() != Get {
-		t.Errorf("Project list should have only have get permissions!")
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("opening database: %s", err)
 	}
+
+	initDB := func(t *testing.T, is_manager bool) {
+		mock.ExpectQuery("SELECT is_manager FROM users WHERE name=?").
+			WillReturnRows(sqlmock.NewRows([]string{"is_manager"}).
+				AddRow(is_manager))
+	}
+
+	check := func(t *testing.T, expected int) {
+		p, err := NewProjectList("test", db)
+		if err != nil {
+			t.Fatalf("Unexpected error %q", err)
+		}
+		if p == nil {
+			t.Fatalf("Returned project list is unexpectedly nil!")
+		}
+		if p.Permissions() != expected {
+			t.Errorf("Expected permissions %b, got %b", expected, p.Permissions())
+		}
+		err = mock.ExpectationsWereMet()
+		if err != nil {
+			t.Errorf("Expectations were not met: %q", err)
+		}
+	}
+
+	t.Run("Not a manager", func(t *testing.T) {
+		initDB(t, false)
+		check(t, Get)
+	})
+	t.Run("Manager", func(t *testing.T) {
+		initDB(t, true)
+		check(t, Get|Create)
+	})
 }
 
 func TestProjectListGet(t *testing.T) {
@@ -77,7 +109,7 @@ func TestProjectListGet(t *testing.T) {
 	mock.ExpectQuery("SELECT .* FROM views WHERE name=?").WillReturnRows(sqlmock.NewRows([]string{"pid"}).AddRow("0").AddRow("1"))
 	mock.ExpectQuery("SELECT .* FROM owns WHERE name=?").WillReturnRows(sqlmock.NewRows([]string{"pid"}).AddRow("2"))
 
-	l := projectList{"test", db}
+	l := projectList{"test", 0, db}
 	e := MockEncoder{[]string{}}
 	err = l.Get(&e)
 	if err != nil {
@@ -98,7 +130,7 @@ func TestProjectPermissions(t *testing.T) {
 		t.Fatalf("opening database: %s", err)
 	}
 
-	initDB := func(t *testing.T, views, owns, is_manager bool) {
+	initDB := func(t *testing.T, views, owns bool) {
 		q := mock.ExpectQuery("SELECT pid FROM views WHERE .*").WillReturnRows(sqlmock.NewRows([]string{"pid"}).AddRow(0))
 		if !views {
 			q.WillReturnError(sql.ErrNoRows)
@@ -107,7 +139,6 @@ func TestProjectPermissions(t *testing.T) {
 		if !owns {
 			q.WillReturnError(sql.ErrNoRows)
 		}
-		q = mock.ExpectQuery("SELECT is_manager FROM users WHERE name=?").WillReturnRows(sqlmock.NewRows([]string{"is_manager"}).AddRow(is_manager))
 	}
 
 	check := func(t *testing.T, expected int) {
@@ -128,24 +159,16 @@ func TestProjectPermissions(t *testing.T) {
 	}
 
 	t.Run("No project", func(t *testing.T) {
-		initDB(t, false, false, false)
+		initDB(t, false, false)
 		check(t, 0)
 	})
-	t.Run("Manager", func(t *testing.T) {
-		initDB(t, false, false, true)
-		check(t, Create)
-	})
 	t.Run("Views", func(t *testing.T) {
-		initDB(t, true, false, false)
+		initDB(t, true, false)
 		check(t, Get)
 	})
 	t.Run("Owns", func(t *testing.T) {
-		initDB(t, false, true, false)
+		initDB(t, false, true)
 		check(t, Get|Set)
-	})
-	t.Run("Owns and is a manager", func(t *testing.T) {
-		initDB(t, false, true, true)
-		check(t, Get|Set|Create)
 	})
 }
 
@@ -216,7 +239,6 @@ func TestClientsPermissions(t *testing.T) {
 		if !owns {
 			q.WillReturnError(sql.ErrNoRows)
 		}
-		q = mock.ExpectQuery("SELECT is_manager FROM users WHERE name=?").WillReturnRows(sqlmock.NewRows([]string{"is_manager"}).AddRow(owns))
 	}
 
 	check := func(t *testing.T, expected int) {

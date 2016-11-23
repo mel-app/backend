@@ -69,11 +69,12 @@ var (
 
 type projectList struct {
 	user string
+	permissions int
 	db   *sql.DB
 }
 
-func (_ *projectList) Permissions() int {
-	return Get
+func (l *projectList) Permissions() int {
+	return l.permissions
 }
 
 func (l *projectList) Get(enc Encoder) error {
@@ -106,8 +107,50 @@ func (l *projectList) Set(dec Decoder) error {
 	return InvalidMethod
 }
 
+// Create a new project.
+// FIXME: This should return a representation of the resulting item,
+// set a LOCATION header with the URI to retreive the newly created item, and
+// return with a 201 code.
 func (l *projectList) Create(dec Decoder) error {
-	return InvalidMethod
+	// Begin by generating an unused ID for the project.
+	// TODO: This is ugly and probably prone to race conditions.
+	// (no locking between requests).
+	id := -1
+	var err error = nil
+	for err != sql.ErrNoRows {
+		id += 1
+		err = l.db.QueryRow("SELECT id FROM projects WHERE id=?", id).Scan(&id)
+	}
+
+	// Now create the project.
+	project := project{}
+	err = dec.Decode(&project)
+	if err != nil {
+		return InvalidBody
+	}
+	_, err = l.db.Exec("INSERT INTO projects VALUES (?, ?, ?, ?, ?, ?)",
+		id, project.Name, project.Percentage, project.Description, false, 0)
+	if err != nil {
+		return err
+	}
+
+	// Add the user to the project.
+	_, err = l.db.Exec("INSERT INTO owns VALUES (?, ?)", l.user, id)
+	return err
+}
+
+func NewProjectList(user string, db *sql.DB) (Resource, error) {
+	p := projectList{user, Get, db}
+	// Check if the user is a manager.
+	is_manager := false
+	err := db.QueryRow("SELECT is_manager FROM users WHERE name=?", user).Scan(&is_manager)
+	if err != nil {
+		return nil, err
+	}
+	if is_manager {
+		p.permissions |= Create
+	}
+	return &p, nil
 }
 
 type login struct {
@@ -178,33 +221,8 @@ func (p *projectResource) Set(dec Decoder) error {
 	return err
 }
 
-// Create a new project on the server, and assign the user as the owner.
 func (p *projectResource) Create(dec Decoder) error {
-	// Begin by generating an unused ID for the project.
-	// TODO: This is ugly and probably prone to race conditions.
-	// (no locking between requests).
-	id := -1
-	var err error = nil
-	for err != sql.ErrNoRows {
-		id += 1
-		err = p.db.QueryRow("SELECT id FROM projects WHERE id=?", id).Scan(&id)
-	}
-
-	// Now create the project.
-	project := project{}
-	err = dec.Decode(&project)
-	if err != nil {
-		return InvalidBody
-	}
-	_, err = p.db.Exec("INSERT INTO projects VALUES (?, ?, ?, ?, ?, ?)",
-		id, project.Name, project.Percentage, project.Description, false, 0)
-	if err != nil {
-		return err
-	}
-
-	// Add the user to the project.
-	_, err = p.db.Exec("INSERT INTO owns VALUES (?, ?)", p.user, id)
-	return err
+	return InvalidMethod
 }
 
 func NewProject(user string, pid uint, db *sql.DB) (Resource, error) {
@@ -225,16 +243,6 @@ func NewProject(user string, pid uint, db *sql.DB) (Resource, error) {
 		}
 	}
 
-	// Check if the user is a manager.
-	is_manager := false
-	err := db.QueryRow("SELECT is_manager FROM users WHERE name=?", user).Scan(&is_manager)
-	if err == nil {
-		if is_manager {
-			p.permissions |= Create
-		}
-	} else {
-		return nil, err
-	}
 	return &p, nil
 }
 
@@ -522,7 +530,7 @@ func NewDeliverable(user string, id uint, pid uint, db *sql.DB) (Resource, error
 func FromURI(user, uri string, db *sql.DB) (Resource, error) {
 	// Match the path to the regular expressions.
 	if projectListRe.MatchString(uri) {
-		return &projectList{user, db}, nil
+		return NewProjectList(user, db)
 	} else if loginRe.MatchString(uri) {
 		return &login{user, db}, nil
 	} else if projectRe.MatchString(uri) {
