@@ -58,6 +58,7 @@ func (m *MapEncoder) Encode(item interface{}) error {
 
 // Regular expressions for the various resources.
 var (
+	loginRe           = regexp.MustCompile(`\A/login\z`)
 	projectListRe     = regexp.MustCompile(`\A/projects\z`)
 	projectRe         = regexp.MustCompile(`\A/(\d+)\z`)
 	flagRe            = regexp.MustCompile(`\A/(\d+)/flag\z`)
@@ -108,8 +109,30 @@ func (l *projectList) Set(dec Decoder) error {
 }
 
 func (l *projectList) Create(dec Decoder) error {
-	// This is implemented in the authentication code.
-	return nil
+	return InvalidMethod
+}
+
+type login struct {
+	user string
+	db   *sql.DB
+}
+
+func (l *login) Permissions() int {
+	return Get | Set | Create
+}
+
+func (l *login) Get(enc Encoder) error {
+	return nil // No-op - for checking login credentials.
+}
+
+func (l *login) Set(dec Decoder) error {
+	// FIXME: Implement this as a way of changing user passwords.
+	return InvalidMethod
+}
+
+func (l *login) Create(dec Decoder) error {
+	// FIXME: Figure out how to move the login creation from authenticateUser.
+	return nil // Implemented in backend.go as a special case.
 }
 
 type project struct {
@@ -514,6 +537,8 @@ func FromURI(user, uri string, db *sql.DB) (Resource, error) {
 	// Match the path to the regular expressions.
 	if projectListRe.MatchString(uri) {
 		return &projectList{user, db}, nil
+	} else if loginRe.MatchString(uri) {
+		return &login{user, db}, nil
 	} else if projectRe.MatchString(uri) {
 		pid, err := strconv.Atoi(projectRe.FindStringSubmatch(uri)[1])
 		if err != nil {

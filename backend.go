@@ -59,7 +59,7 @@ func authenticateUser(writer http.ResponseWriter, fail func(int), request *http.
 	salt := make([]byte, passwordSize)
 	dbpassword := []byte("")
 	err := db.QueryRow("SELECT salt, password FROM users WHERE name=?", user).Scan(&salt, &dbpassword)
-	if err == sql.ErrNoRows && request.URL.Path == "/projects" && request.Method == http.MethodPost {
+	if err == sql.ErrNoRows && request.URL.Path == "/login" && request.Method == http.MethodPost {
 		// FIXME: Special case creating a new user.
 		_, err = rand.Read(salt)
 		if err != nil {

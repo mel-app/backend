@@ -22,6 +22,7 @@ dID: deliverable ID
 Note that I should url encode the ID's if I am using names, and unencode them
 otherwise.
 
+- login: login creation and handling
 - projects: list of projects accessible to the user, can-create permissions
 - pID: project properties (percentage, description)
 - pID/flag: current flag state
