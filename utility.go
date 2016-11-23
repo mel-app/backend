@@ -12,9 +12,9 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 	"strconv"
-	"fmt"
 )
 
 // usage prints the usage string for the app.
@@ -51,7 +51,7 @@ func main() {
 			return
 		}
 		fmt.Printf("Starting server on :%s...\n", port)
-		run(":"+port)
+		run(":" + port)
 	} else {
 		usage()
 	}
@@ -85,7 +85,7 @@ func password(user, password string, db *sql.DB) {
 // transfer sets a project's owner to "user"
 func transfer(spid string, user string, db *sql.DB) {
 	pid, err := strconv.Atoi(spid)
-	if err != nil || pid < 0{
+	if err != nil || pid < 0 {
 		fmt.Printf("Invalid pid %s\n", spid)
 	}
 	_, err = db.Exec("UPDATE owns SET name=? WHERE pid=?", user, uint(pid))

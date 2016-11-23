@@ -435,16 +435,16 @@ func NewDeliverableList(user string, pid uint, db *sql.DB) (Resource, error) {
 }
 
 type deliverable struct {
-	id uint
+	id      uint
 	pid     uint
 	project Resource
 	db      *sql.DB
 }
 
 type deliverableValue struct {
-	name string
-	due string
-	percentage uint
+	name        string
+	due         string
+	percentage  uint
 	description string
 }
 
