@@ -109,7 +109,7 @@ func (l *projectList) Set(dec Decoder) error {
 
 // Create a new project.
 // FIXME: This should return a representation of the resulting item,
-// set a LOCATION header with the URI to retreive the newly created item, and
+// set a LOCATION header with the URI to retrieve the newly created item, and
 // return with a 201 code.
 func (l *projectList) Create(dec Decoder) error {
 	// Begin by generating an unused ID for the project.
