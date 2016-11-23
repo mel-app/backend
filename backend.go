@@ -106,7 +106,9 @@ func authenticateUser(writer http.ResponseWriter, fail func(int), request *http.
 // authenticateRequest checks that the given user has permission to complete
 // the request.
 func authenticateRequest(request *http.Request, resource Resource) (ok bool) {
-	return ((request.Method == http.MethodGet) && (resource.Permissions()&Get != 0)) || ((request.Method == http.MethodPut) && (resource.Permissions()&Set != 0)) || ((request.Method == http.MethodPost) && (resource.Permissions()&Create != 0))
+	return ((request.Method == http.MethodGet) && (resource.Permissions()&Get != 0)) ||
+		((request.Method == http.MethodPut) && (resource.Permissions()&Set != 0)) ||
+		((request.Method == http.MethodPost) && (resource.Permissions()&Create != 0))
 }
 
 // handle a single HTTP request.
