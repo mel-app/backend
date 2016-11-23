@@ -117,8 +117,8 @@ func handle(writer http.ResponseWriter, request *http.Request) {
 	// Open the database.
 	db, err := sql.Open(dbtype, dbname)
 	if err != nil {
-		log.Printf("Error opening DB: %q\n", err)
-		fail(http.StatusInternalServerError)
+		internalError(fail, err)
+		return
 	}
 
 	// Authenticate the user.
