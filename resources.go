@@ -468,10 +468,8 @@ type deliverableValue struct {
 func (d *deliverable) Permissions() int {
 	if Set&d.project.Permissions() != 0 {
 		return Get | Set | Create
-	} else if Get&d.project.Permissions() != 0 {
-		return Get
 	}
-	return 0
+	return Get&d.project.Permissions()
 }
 
 func (d *deliverable) Get(enc Encoder) error {
@@ -480,6 +478,8 @@ func (d *deliverable) Get(enc Encoder) error {
 		Scan(&v.name, &v.due, &v.percentage, &v.description)
 	// TODO: We don't validate the resource name while creating it so this
 	//		can crash dramatically...
+	// TODO: This applies whenever there is a constraint in the database; perhaps
+	//		don't add constraints in the DB, but implement them here instead?
 	if err != nil {
 		return err
 	}
