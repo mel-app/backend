@@ -410,7 +410,7 @@ type deliverableList struct {
 
 func (l *deliverableList) Permissions() int {
 	if Set&l.project.Permissions() != 0 {
-		return Get | Set
+		return Get | Create
 	} else if Get&l.project.Permissions() != 0 {
 		return Get
 	}
@@ -442,8 +442,30 @@ func (l *deliverableList) Set(dec Decoder) error {
 	return InvalidMethod
 }
 
+// Create for deliverableList creates a new deliverable.
 func (l *deliverableList) Create(dec Decoder) error {
-	return InvalidMethod // Can't create a deliverable list.
+	// Begin by generating an unused ID for the deliverable.
+	// TODO: This is ugly and probably prone to race conditions.
+	// (no locking between requests).
+	// FIXME: This is largely duplicated from the project creation code.
+	id := -1
+	var err error = nil
+	for err != sql.ErrNoRows {
+		id += 1
+		err = l.db.QueryRow("SELECT id FROM deliverables WHERE pid=? and id=?",
+			l.pid, id).Scan(&id)
+	}
+
+	// Now create the project.
+	v := deliverableValue{}
+	err = dec.Decode(&v)
+	if err != nil {
+		return InvalidBody
+	}
+	_, err = l.db.Exec("INSERT INTO deliverables VALUES (?, ?, ?, ?, ?, ?)",
+		id, l.pid, v.Name, v.Due, v.Percentage, v.Description)
+	// TODO: This may not be an "internal server error" - check first.
+	return err
 }
 
 func NewDeliverableList(user string, pid uint, db *sql.DB) (Resource, error) {
@@ -459,10 +481,10 @@ type deliverable struct {
 }
 
 type deliverableValue struct {
-	name        string
-	due         string
-	percentage  uint
-	description string
+	Name        string
+	Due         string
+	Percentage  uint
+	Description string
 }
 
 func (d *deliverable) Permissions() int {
@@ -475,7 +497,7 @@ func (d *deliverable) Permissions() int {
 func (d *deliverable) Get(enc Encoder) error {
 	v := deliverableValue{}
 	err := d.db.QueryRow("SELECT name, due, percentage, description FROM deliverables WHERE id=? and pid=?", d.id, d.pid).
-		Scan(&v.name, &v.due, &v.percentage, &v.description)
+		Scan(&v.Name, &v.Due, &v.Percentage, &v.Description)
 	// TODO: We don't validate the resource name while creating it so this
 	//		can crash dramatically...
 	// TODO: This applies whenever there is a constraint in the database; perhaps
@@ -493,32 +515,12 @@ func (d *deliverable) Set(dec Decoder) error {
 		return InvalidBody
 	}
 	_, err = d.db.Exec("UPDATE deliverables SET name=?, due=?, percentage=?, description=? WHERE id=? and pid=?",
-		v.name, v.due, v.percentage, v.description, d.id, d.pid)
+		v.Name, v.Due, v.Percentage, v.Description, d.id, d.pid)
 	return err
 }
 
 func (d *deliverable) Create(dec Decoder) error {
-	// Begin by generating an unused ID for the deliverable.
-	// TODO: This is ugly and probably prone to race conditions.
-	// (no locking between requests).
-	// FIXME: This is largely duplicated from the project creation code.
-	id := -1
-	var err error = nil
-	for err != sql.ErrNoRows {
-		id += 1
-		err = d.db.QueryRow("SELECT id FROM deliverables WHERE pid=? and id=?", d.pid, id).Scan(&id)
-	}
-
-	// Now create the project.
-	v := deliverableValue{}
-	err = dec.Decode(&v)
-	if err != nil {
-		return InvalidBody
-	}
-	_, err = d.db.Exec("INSERT INTO deliverables VALUES (?, ?, ?, ?, ?)",
-		id, d.pid, v.name, v.due, v.percentage, v.description)
-	// TODO: This may not be an "internal server error" - check first.
-	return err
+	return InvalidMethod // Use deliverableList.Create instead
 }
 
 func NewDeliverable(user string, id uint, pid uint, db *sql.DB) (Resource, error) {
