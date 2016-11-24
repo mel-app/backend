@@ -1,5 +1,9 @@
 # TODO #
 
+Also grep for TODO and FIXME in the source code.
+TODOs are things that should be fixed, while FIXMEs are things that it would
+be good to fix.
+
 ## Permissions/user accounts ##
 
 - Sometimes InvalidMethod/Forbidden/404 is returned when another value should
