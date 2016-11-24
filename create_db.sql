@@ -34,8 +34,14 @@ CREATE TABLE views (
 );
 
 -- Populate the projects table.
-INSERT INTO projects VALUES (0, "Test Project 1", 30, "First test project", 1, 0);
-INSERT INTO projects VALUES (1, "Test Project 2", 80, "Second test project", 0, 0);
+INSERT INTO projects VALUES (0, "Test Project 0", 30, "First test project", 1, 0);
+INSERT INTO projects VALUES (1, "Test Project 1", 80, "Second test project", 0, 0);
+-- Add a test user.
 INSERT INTO users VALUES ("test", "", "", "true"); -- Demo account.
 INSERT INTO owns VALUES ("test", 0);
 INSERT INTO views VALUES ("test", 1);
+-- Add deliverables to the test projects.
+INSERT INTO deliverables VALUES
+    (0, 0, "Deliverable 0", 25/11/2016, 20, "Finish backend");
+INSERT INTO deliverables VALUES
+    (1, 0, "Deliverable 1", 9/12/2016, 70, "Finish prototype");
