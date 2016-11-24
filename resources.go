@@ -10,8 +10,10 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"math/rand"
 	"regexp"
 	"strconv"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -156,22 +158,12 @@ func (l *projectList) Get(enc Encoder) error {
 // set a LOCATION header with the URI to retrieve the newly created item, and
 // return with a 201 code.
 func (l *projectList) Create(dec Decoder) error {
-	// Begin by generating an unused ID for the project.
-	// TODO: This is ugly and probably prone to race conditions.
-	// (no locking between requests).
-	id := -1
-	var err error = nil
-	for err != sql.ErrNoRows {
-		id += 1
-		err = l.db.QueryRow("SELECT id FROM projects WHERE id=?", id).Scan(&id)
-	}
-
-	// Now create the project.
 	project := project{}
-	err = dec.Decode(&project)
+	err := dec.Decode(&project)
 	if err != nil || ! project.valid() {
 		return InvalidBody
 	}
+	id := rand.Int()
 	_, err = l.db.Exec("INSERT INTO projects VALUES (?, ?, ?, ?, ?, ?)",
 		id, project.Name, project.Percentage, project.Description, false, 0)
 	if err != nil {
@@ -509,24 +501,12 @@ func (l *deliverableList) Get(enc Encoder) error {
 
 // Create for deliverableList creates a new deliverable.
 func (l *deliverableList) Create(dec Decoder) error {
-	// Begin by generating an unused ID for the deliverable.
-	// TODO: This is ugly and probably prone to race conditions.
-	// (no locking between requests).
-	// FIXME: This is largely duplicated from the project creation code.
-	id := -1
-	var err error = nil
-	for err != sql.ErrNoRows {
-		id += 1
-		err = l.db.QueryRow("SELECT id FROM deliverables WHERE pid=? and id=?",
-			l.pid, id).Scan(&id)
-	}
-
-	// Now create the project.
 	v := deliverable{}
-	err = dec.Decode(&v)
+	err := dec.Decode(&v)
 	if err != nil || !v.valid() {
 		return InvalidBody
 	}
+	id := rand.Int()
 	_, err = l.db.Exec("INSERT INTO deliverables VALUES (?, ?, ?, ?, ?, ?)",
 		id, l.pid, v.Name, v.Due, v.Percentage, v.Description)
 	return err
@@ -656,6 +636,12 @@ func FromURI(user, uri string, db *sql.DB) (Resource, error) {
 	} else {
 		return nil, InvalidResource
 	}
+}
+
+// Seed the PRNG.
+// This *must* be called before using FromURI.
+func Seed() {
+	rand.Seed(time.Now().Unix())
 }
 
 // vim: sw=4 ts=4 noexpandtab

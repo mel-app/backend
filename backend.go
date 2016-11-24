@@ -169,6 +169,7 @@ func handle(writer http.ResponseWriter, request *http.Request) {
 }
 
 func run(port string) {
+	Seed()
 	http.ListenAndServe(port, http.HandlerFunc(handle))
 }
 
