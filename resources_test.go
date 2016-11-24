@@ -109,7 +109,7 @@ func TestProjectListGet(t *testing.T) {
 	mock.ExpectQuery("SELECT .* FROM views WHERE name=?").WillReturnRows(sqlmock.NewRows([]string{"pid"}).AddRow("0").AddRow("1"))
 	mock.ExpectQuery("SELECT .* FROM owns WHERE name=?").WillReturnRows(sqlmock.NewRows([]string{"pid"}).AddRow("2"))
 
-	l := projectList{"test", 0, db}
+	l := projectList{resource{}, "test", 0, db}
 	e := MockEncoder{[]string{}}
 	err = l.Get(&e)
 	if err != nil {
@@ -180,7 +180,7 @@ func TestProjectGet(t *testing.T) {
 
 	mock.ExpectQuery("SELECT .* FROM projects WHERE id=?").WillReturnRows(sqlmock.NewRows([]string{"name", "percentage", "description"}).AddRow("test proj", "10", "Desc"))
 
-	p := projectResource{0, 0, db, "test"}
+	p := projectResource{resource{}, 0, 0, db, "test"}
 	e := MockEncoder{[]string{}}
 	err = p.Get(&e)
 	if err != nil {
@@ -203,7 +203,7 @@ func TestProjectSet(t *testing.T) {
 		t.Fatalf("opening database: %s", err)
 	}
 
-	p := projectResource{1, 0, db, "test"}
+	p := projectResource{resource{}, 1, 0, db, "test"}
 
 	check := func(t *testing.T, d Decoder, expErr error) {
 		if expErr == nil {
@@ -287,7 +287,7 @@ func TestFlagSet(t *testing.T) {
 		t.Fatalf("opening database: %s", err)
 	}
 
-	f := flag{1, nil, db}
+	f := flag{resource{}, 1, nil, db}
 
 	check := func(name string, update, existing, result versionedFlag) {
 		t.Run(name, func(t *testing.T) {
@@ -330,7 +330,7 @@ func TestClientsSet(t *testing.T) {
 		t.Fatalf("opening database: %s", err)
 	}
 
-	c := clients{1, nil, db}
+	c := clients{resource{}, 1, nil, db}
 
 	check := func(t *testing.T, update, existing []string) {
 		rows := sqlmock.NewRows([]string{"name"})

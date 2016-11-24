@@ -67,10 +67,36 @@ var (
 	deliverableRe     = regexp.MustCompile(`\A/projects/(\d+)/deliverables/(\d+)\z`)
 )
 
+
+// resource provides a default implementation of all of the methods required
+// to implement Resource.
+type resource struct {}
+
+func (r resource) Permissions() int {
+	return 0
+}
+
+func (r resource) Get(enc Encoder) error {
+	return InvalidMethod
+}
+
+func (r resource) Set(dec Decoder) error {
+	return InvalidMethod
+}
+
+func (r resource) Create(dec Decoder) error {
+	return InvalidMethod
+}
+
 type login struct {
+	Resource
 	user string
 	db   *sql.DB
 }
+
+// FIXME: Implement Set as a way of changing passwords.
+// FIXME: Figure out how to move the login creation from authenticateUser to
+// Create here.
 
 func (l *login) Permissions() int {
 	return Get | Set | Create
@@ -80,17 +106,8 @@ func (l *login) Get(enc Encoder) error {
 	return nil // No-op - for checking login credentials.
 }
 
-func (l *login) Set(dec Decoder) error {
-	// FIXME: Implement this as a way of changing user passwords.
-	return InvalidMethod
-}
-
-func (l *login) Create(dec Decoder) error {
-	// FIXME: Figure out how to move the login creation from authenticateUser.
-	return nil // Implemented in backend.go as a special case.
-}
-
 type projectList struct {
+	Resource
 	user string
 	permissions int
 	db   *sql.DB
@@ -126,10 +143,6 @@ func (l *projectList) Get(enc Encoder) error {
 	return nil
 }
 
-func (l *projectList) Set(dec Decoder) error {
-	return InvalidMethod
-}
-
 // Create a new project.
 // FIXME: This should return a representation of the resulting item,
 // set a LOCATION header with the URI to retrieve the newly created item, and
@@ -163,7 +176,7 @@ func (l *projectList) Create(dec Decoder) error {
 }
 
 func NewProjectList(user string, db *sql.DB) (Resource, error) {
-	p := projectList{user, Get, db}
+	p := projectList{resource{}, user, Get, db}
 	// Check if the user is a manager.
 	is_manager := false
 	err := db.QueryRow("SELECT is_manager FROM users WHERE name=?", user).Scan(&is_manager)
@@ -177,6 +190,7 @@ func NewProjectList(user string, db *sql.DB) (Resource, error) {
 }
 
 type projectResource struct {
+	Resource
 	pid         uint
 	permissions int
 	db          *sql.DB
@@ -221,12 +235,8 @@ func (p *projectResource) Set(dec Decoder) error {
 	return err
 }
 
-func (p *projectResource) Create(dec Decoder) error {
-	return InvalidMethod
-}
-
 func NewProject(user string, pid uint, db *sql.DB) (Resource, error) {
-	p := projectResource{pid, 0, db, user}
+	p := projectResource{resource{}, pid, 0, db, user}
 
 	// Find the user.
 	dbpid := 0
@@ -247,6 +257,7 @@ func NewProject(user string, pid uint, db *sql.DB) (Resource, error) {
 }
 
 type flag struct {
+	Resource
 	pid     uint
 	project Resource
 	db      *sql.DB
@@ -306,16 +317,13 @@ func (f *flag) Set(dec Decoder) error {
 	return nil
 }
 
-func (f *flag) Create(dec Decoder) error {
-	return InvalidMethod // Can't create a flag.
-}
-
 func NewFlag(user string, pid uint, db *sql.DB) (Resource, error) {
 	proj, err := NewProject(user, pid, db)
-	return &flag{pid, proj, db}, err
+	return &flag{resource{}, pid, proj, db}, err
 }
 
 type clients struct {
+	Resource
 	pid     uint
 	project Resource
 	db      *sql.DB
@@ -393,16 +401,13 @@ func (c *clients) Set(dec Decoder) error {
 	return nil
 }
 
-func (c *clients) Create(dec Decoder) error {
-	return InvalidMethod // Can't create a clients resource.
-}
-
 func NewClients(user string, pid uint, db *sql.DB) (Resource, error) {
 	proj, err := NewProject(user, pid, db)
-	return &clients{pid, proj, db}, err
+	return &clients{resource{}, pid, proj, db}, err
 }
 
 type deliverableList struct {
+	Resource
 	pid     uint
 	project Resource
 	db      *sql.DB
@@ -438,10 +443,6 @@ func (l *deliverableList) Get(enc Encoder) error {
 	return rows.Err()
 }
 
-func (l *deliverableList) Set(dec Decoder) error {
-	return InvalidMethod
-}
-
 // Create for deliverableList creates a new deliverable.
 func (l *deliverableList) Create(dec Decoder) error {
 	// Begin by generating an unused ID for the deliverable.
@@ -470,10 +471,11 @@ func (l *deliverableList) Create(dec Decoder) error {
 
 func NewDeliverableList(user string, pid uint, db *sql.DB) (Resource, error) {
 	proj, err := NewProject(user, pid, db)
-	return &deliverableList{pid, proj, db}, err
+	return &deliverableList{resource{}, pid, proj, db}, err
 }
 
 type deliverable struct {
+	Resource
 	id      uint
 	pid     uint
 	project Resource
@@ -519,13 +521,9 @@ func (d *deliverable) Set(dec Decoder) error {
 	return err
 }
 
-func (d *deliverable) Create(dec Decoder) error {
-	return InvalidMethod // Use deliverableList.Create instead
-}
-
 func NewDeliverable(user string, id uint, pid uint, db *sql.DB) (Resource, error) {
 	proj, err := NewProject(user, pid, db)
-	return &deliverable{id, pid, proj, db}, err
+	return &deliverable{resource{}, id, pid, proj, db}, err
 }
 
 // FromURI returns the resource corresponding to the given URI.
@@ -534,7 +532,7 @@ func FromURI(user, uri string, db *sql.DB) (Resource, error) {
 	if projectListRe.MatchString(uri) {
 		return NewProjectList(user, db)
 	} else if loginRe.MatchString(uri) {
-		return &login{user, db}, nil
+		return &login{resource{}, user, db}, nil
 	} else if projectRe.MatchString(uri) {
 		pid, err := strconv.Atoi(projectRe.FindStringSubmatch(uri)[1])
 		if err != nil {
