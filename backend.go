@@ -153,6 +153,8 @@ func handle(writer http.ResponseWriter, request *http.Request) {
 		err = resource.Set(json.NewDecoder(request.Body))
 	case http.MethodPost:
 		err = resource.Create(json.NewDecoder(request.Body))
+	case http.MethodDelete:
+		err = resource.Delete()
 	default:
 		err = InvalidMethod
 	}

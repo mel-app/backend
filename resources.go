@@ -25,6 +25,7 @@ const (
 	Get = 1 << iota
 	Set
 	Create
+	Delete
 )
 
 // Interface abstracting encoders.
@@ -42,6 +43,7 @@ type Resource interface {
 	Get(Encoder) error
 	Set(Decoder) error
 	Create(Decoder) error
+	Delete() error
 }
 
 // Fake encoder to allow extracting the current state from a Get call.
@@ -85,6 +87,10 @@ func (r resource) Set(dec Decoder) error {
 }
 
 func (r resource) Create(dec Decoder) error {
+	return InvalidMethod
+}
+
+func (r resource) Delete() error {
 	return InvalidMethod
 }
 
@@ -491,7 +497,7 @@ type deliverableValue struct {
 
 func (d *deliverable) Permissions() int {
 	if Set&d.project.Permissions() != 0 {
-		return Get | Set | Create
+		return Get | Set | Create | Delete
 	}
 	return Get&d.project.Permissions()
 }
@@ -518,6 +524,12 @@ func (d *deliverable) Set(dec Decoder) error {
 	}
 	_, err = d.db.Exec("UPDATE deliverables SET name=?, due=?, percentage=?, description=? WHERE id=? and pid=?",
 		v.Name, v.Due, v.Percentage, v.Description, d.id, d.pid)
+	return err
+}
+
+func (d *deliverableResource) Delete() error {
+	_, err := d.db.Exec("DELETE FROM deliverables WHERE id=? and pid=?",
+		d.id, d.pid)
 	return err
 }
 
