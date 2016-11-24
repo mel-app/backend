@@ -433,6 +433,16 @@ func (c *clients) Set(dec Decoder) error {
 		}
 		if _, ok := old[user]; !ok {
 			// New user; add it to the database.
+			// We first check that the user actually exists.
+			dbuser := ""
+			err = c.db.QueryRow("SELECT name FROM users WHERE name=?", user).
+				Scan(&dbuser)
+			if err == sql.ErrNoRows {
+				return InvalidBody
+			} else if err != nil {
+				return err
+			}
+			// Now add the user.
 			_, err = c.db.Exec("INSERT INTO views VALUES (?, ?)", user, c.pid)
 			if err != nil {
 				return err

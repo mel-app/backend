@@ -270,6 +270,77 @@ func TestClientsPermissions(t *testing.T) {
 	})
 }
 
+func TestClientsSet(t *testing.T) {
+	// TODO: Add test cases for synchronisation.
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("opening database: %s", err)
+	}
+
+	c := clients{resource{}, 1, nil, db}
+
+	check := func(t *testing.T, update, existing []string) {
+		rows := sqlmock.NewRows([]string{"name"})
+		for _, v := range existing {
+			rows.AddRow(v)
+		}
+		mock.ExpectQuery("SELECT name FROM views WHERE .*").
+			WillReturnRows(rows).WithArgs(c.pid)
+
+		// Look for added values.
+		for _, s := range update {
+			in := false
+			for _, v := range existing {
+				if v == s {
+					in = true
+				}
+			}
+			if !in {
+				mock.ExpectQuery(`SELECT name FROM users WHERE name=\?`).
+					WithArgs(s).WillReturnRows(sqlmock.NewRows([]string{"name"}).AddRow(s))
+				mock.ExpectExec("INSERT INTO views VALUES .*").WithArgs(s, c.pid).WillReturnResult(sqlmock.NewResult(0, 0))
+			}
+		}
+
+		// Look for removed values.
+		for _, s := range existing {
+			in := false
+			for _, v := range update {
+				if v == s {
+					in = true
+				}
+			}
+			if !in {
+				mock.ExpectExec("DELETE FROM views .*").WithArgs(s, c.pid).WillReturnResult(sqlmock.NewResult(0, 0))
+			}
+		}
+
+		err := c.Set(&MockDecoder{update, 0})
+		if err != nil {
+			t.Errorf("Unexpected error %v", err)
+		}
+		err = mock.ExpectationsWereMet()
+		if err != nil {
+			t.Errorf("Expectations were not met: %q", err)
+		}
+	}
+
+	// We can only test single item changes here as sqlmock requires ordered
+	// queries.
+	t.Run("Empty", func(t *testing.T) {
+		check(t, []string{}, []string{})
+	})
+	t.Run("Remove", func(t *testing.T) {
+		check(t, []string{"2"}, []string{"1", "2"})
+	})
+	t.Run("Add", func(t *testing.T) {
+		check(t, []string{"1", "2", "3"}, []string{"2", "3"})
+	})
+	t.Run("Remove and add", func(t *testing.T) {
+		check(t, []string{"1", "2"}, []string{"2", "3"})
+	})
+}
+
 type mockFlagDecoder struct {
 	value flag
 }
@@ -323,75 +394,6 @@ func TestFlagSet(t *testing.T) {
 	check("Server updated", flag{2, false}, flag{3, true}, flag{3, true})
 	check("Client updated", flag{2, true}, flag{2, false}, flag{3, true})
 	check("Client and server updated", flag{2, true}, flag{4, false}, flag{4, false})
-}
-
-func TestClientsSet(t *testing.T) {
-	// TODO: Add test cases for synchronisation.
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("opening database: %s", err)
-	}
-
-	c := clients{resource{}, 1, nil, db}
-
-	check := func(t *testing.T, update, existing []string) {
-		rows := sqlmock.NewRows([]string{"name"})
-		for _, v := range existing {
-			rows.AddRow(v)
-		}
-		mock.ExpectQuery("SELECT name FROM views WHERE .*").
-			WillReturnRows(rows).WithArgs(c.pid)
-
-		// Look for added values.
-		for _, s := range update {
-			in := false
-			for _, v := range existing {
-				if v == s {
-					in = true
-				}
-			}
-			if !in {
-				mock.ExpectExec("INSERT INTO views VALUES .*").WithArgs(s, c.pid).WillReturnResult(sqlmock.NewResult(0, 0))
-			}
-		}
-
-		// Look for removed values.
-		for _, s := range existing {
-			in := false
-			for _, v := range update {
-				if v == s {
-					in = true
-				}
-			}
-			if !in {
-				mock.ExpectExec("DELETE FROM views .*").WithArgs(s, c.pid).WillReturnResult(sqlmock.NewResult(0, 0))
-			}
-		}
-
-		err := c.Set(&MockDecoder{update, 0})
-		if err != nil {
-			t.Errorf("Unexpected error %v", err)
-		}
-		err = mock.ExpectationsWereMet()
-		if err != nil {
-			t.Errorf("Expectations were not met: %q", err)
-		}
-	}
-
-	// We can only test single item changes here as sqlmock requires ordered
-	// queries.
-	t.Run("Empty", func(t *testing.T) {
-		check(t, []string{}, []string{})
-	})
-	t.Run("Remove", func(t *testing.T) {
-		check(t, []string{"2"}, []string{"1", "2"})
-	})
-	t.Run("Add", func(t *testing.T) {
-		check(t, []string{"1", "2", "3"}, []string{"2", "3"})
-	})
-	t.Run("Remove and add", func(t *testing.T) {
-		check(t, []string{"1", "2"}, []string{"2", "3"})
-	})
 }
 
 // vim: sw=4 ts=4 noexpandtab
