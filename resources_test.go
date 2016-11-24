@@ -164,11 +164,11 @@ func TestProjectPermissions(t *testing.T) {
 	})
 	t.Run("Views", func(t *testing.T) {
 		initDB(t, true, false)
-		check(t, Get)
+		check(t, Get|Delete)
 	})
 	t.Run("Owns", func(t *testing.T) {
 		initDB(t, false, true)
-		check(t, Get|Set)
+		check(t, Get|Set|Delete)
 	})
 }
 

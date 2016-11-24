@@ -238,6 +238,45 @@ func (p *projectResource) Set(dec Decoder) error {
 	return err
 }
 
+// Delete the given project from the current user.
+// This should remove the current user from the project.
+// If there are no managers left for the given project, delete it, any
+// deliverables, and any viewing relations involving it.
+func (p *projectResource) Delete() error {
+	var err error = nil
+	if p.permissions&Set == 0 {
+		// Not an owner.
+		_, err = p.db.Exec("DELETE FROM views WHERE name=? and pid=?",
+			p.user, p.pid)
+	} else {
+		// Project owner.
+		_, err = p.db.Exec("DELETE FROM owns WHERE name=? and pid=?",
+			p.user, p.pid)
+		if err != nil {
+			return err
+		}
+		// Check for other managers.
+		dbpid := 0
+		err = p.db.QueryRow("SELECT pid FROM owns WHERE name=? and pid=?",
+			p.user, p.pid).Scan(&dbpid)
+		if err == sql.ErrNoRows {
+			// Remove any viewers.
+			_, err = p.db.Exec("DELETE FROM views WHERE pid=?", p.pid)
+			if err != nil {
+				return err
+			}
+			// Remove any deliverables.
+			_, err = p.db.Exec("DELETE FROM deliverables WHERE pid=?", p.pid)
+			if err != nil {
+				return err
+			}
+			// Remove the project.
+			_, err = p.db.Exec("DELETE FROM projects WHERE id=?", p.pid)
+		}
+	}
+	return err
+}
+
 func NewProject(user string, pid uint, db *sql.DB) (Resource, error) {
 	p := projectResource{resource{}, pid, 0, db, user}
 
@@ -247,9 +286,9 @@ func NewProject(user string, pid uint, db *sql.DB) (Resource, error) {
 		err := db.QueryRow(fmt.Sprintf("SELECT pid FROM %s WHERE name=? and pid=?", table), user, pid).Scan(&dbpid)
 		if err == nil {
 			if table == "owns" {
-				p.permissions |= Get | Set
+				p.permissions |= Get | Set | Delete
 			} else {
-				p.permissions |= Get
+				p.permissions |= Get | Delete
 			}
 		} else if err != sql.ErrNoRows {
 			return nil, err
