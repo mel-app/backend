@@ -529,10 +529,10 @@ func NewDeliverable(user string, id uint, pid uint, db *sql.DB) (Resource, error
 // FromURI returns the resource corresponding to the given URI.
 func FromURI(user, uri string, db *sql.DB) (Resource, error) {
 	// Match the path to the regular expressions.
-	if projectListRe.MatchString(uri) {
-		return NewProjectList(user, db)
-	} else if loginRe.MatchString(uri) {
+	if loginRe.MatchString(uri) {
 		return &login{resource{}, user, db}, nil
+	} else if projectListRe.MatchString(uri) {
+		return NewProjectList(user, db)
 	} else if projectRe.MatchString(uri) {
 		pid, err := strconv.Atoi(projectRe.FindStringSubmatch(uri)[1])
 		if err != nil {
