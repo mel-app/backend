@@ -28,6 +28,11 @@ const (
 	Delete
 )
 
+const (
+	dbNameLen = 128
+	dbDescLen = 512
+)
+
 // Interface abstracting encoders.
 type Encoder interface {
 	Encode(interface{}) error
@@ -505,6 +510,9 @@ func (l *deliverableList) Create(dec Decoder) error {
 	if err != nil {
 		return InvalidBody
 	}
+	if !v.valid() {
+		return InvalidBody
+	}
 	_, err = l.db.Exec("INSERT INTO deliverables VALUES (?, ?, ?, ?, ?, ?)",
 		id, l.pid, v.Name, v.Due, v.Percentage, v.Description)
 	// TODO: This may not be an "internal server error" - check first.
@@ -531,6 +539,15 @@ type deliverable struct {
 	Description string
 }
 
+// valid of deliverables returns true if the value will fit in the database and
+// is valid.
+// FIXME: Validate the Due value.
+func (d deliverable) valid() bool {
+	return (d.Percentage <= 100) &&
+		(len(d.Name) < dbNameLen) && (len(d.Name) > 0) &&
+		(len(d.Description) < dbDescLen) && (len(d.Description) > 0)
+}
+
 func (d *deliverableResource) Permissions() int {
 	if Set&d.project.Permissions() != 0 {
 		return Get | Set | Create | Delete
@@ -542,10 +559,6 @@ func (d *deliverableResource) Get(enc Encoder) error {
 	v := deliverable{}
 	err := d.db.QueryRow("SELECT name, due, percentage, description FROM deliverables WHERE id=? and pid=?", d.id, d.pid).
 		Scan(&v.Name, &v.Due, &v.Percentage, &v.Description)
-	// TODO: We don't validate the resource name while creating it so this
-	//		can crash dramatically...
-	// TODO: This applies whenever there is a constraint in the database; perhaps
-	//		don't add constraints in the DB, but implement them here instead?
 	if err != nil {
 		return err
 	}
@@ -556,6 +569,9 @@ func (d *deliverableResource) Set(dec Decoder) error {
 	v := deliverable{}
 	err := dec.Decode(&v)
 	if err != nil {
+		return InvalidBody
+	}
+	if !v.valid() {
 		return InvalidBody
 	}
 	_, err = d.db.Exec("UPDATE deliverables SET name=?, due=?, percentage=?, description=? WHERE id=? and pid=?",
