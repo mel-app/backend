@@ -11,4 +11,6 @@
 - The client list should probably use DELETE and PUT as partial operations?
 - Testing is poor.
 - Perhaps the database should be wrapped?
+- POSTs should return a LOCATION header and a different status code.
+- Wrap the version code and make it generic; apply it to everything.
 
