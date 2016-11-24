@@ -178,7 +178,9 @@ func TestProjectGet(t *testing.T) {
 		t.Fatalf("opening database: %s", err)
 	}
 
-	mock.ExpectQuery("SELECT .* FROM projects WHERE id=?").WillReturnRows(sqlmock.NewRows([]string{"name", "percentage", "description"}).AddRow("test proj", "10", "Desc"))
+	mock.ExpectQuery("SELECT .* FROM projects WHERE id=?").
+		WillReturnRows(sqlmock.NewRows([]string{"name", "percentage",
+			"description"}).AddRow("test proj", "10", "Desc"))
 
 	p := projectResource{resource{}, 0, 0, db, "test"}
 	e := MockEncoder{[]string{}}
