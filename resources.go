@@ -414,7 +414,6 @@ func (c *clients) Get(enc Encoder) error {
 
 func (c *clients) Set(dec Decoder) error {
 	// TODO: Implement syncronisation.
-	// FIXME: We don't validate the user names.
 
 	// Populate the list of users in the database.
 	old := map[string]bool{} // user->removed
