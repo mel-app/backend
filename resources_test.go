@@ -269,7 +269,7 @@ func TestClientsPermissions(t *testing.T) {
 }
 
 type mockFlagDecoder struct {
-	value versionedFlag
+	value flag
 }
 
 func (f *mockFlagDecoder) Decode(item interface{}) error {
@@ -289,7 +289,7 @@ func TestFlagSet(t *testing.T) {
 
 	f := flagResource{resource{}, 1, nil, db}
 
-	check := func(name string, update, existing, result versionedFlag) {
+	check := func(name string, update, existing, result flag) {
 		t.Run(name, func(t *testing.T) {
 
 			// Expect for the existing value.
@@ -316,11 +316,11 @@ func TestFlagSet(t *testing.T) {
 		})
 	}
 
-	check("No change", versionedFlag{2, false}, versionedFlag{2, false}, versionedFlag{2, false})
-	check("No change but server version has been incremented", versionedFlag{2, false}, versionedFlag{4, false}, versionedFlag{4, false})
-	check("Server updated", versionedFlag{2, false}, versionedFlag{3, true}, versionedFlag{3, true})
-	check("Client updated", versionedFlag{2, true}, versionedFlag{2, false}, versionedFlag{3, true})
-	check("Client and server updated", versionedFlag{2, true}, versionedFlag{4, false}, versionedFlag{4, false})
+	check("No change", flag{2, false}, flag{2, false}, flag{2, false})
+	check("No change but server version has been incremented", flag{2, false}, flag{4, false}, flag{4, false})
+	check("Server updated", flag{2, false}, flag{3, true}, flag{3, true})
+	check("Client updated", flag{2, true}, flag{2, false}, flag{3, true})
+	check("Client and server updated", flag{2, true}, flag{4, false}, flag{4, false})
 }
 
 func TestClientsSet(t *testing.T) {

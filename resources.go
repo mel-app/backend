@@ -265,7 +265,7 @@ type flagResource struct {
 	db      *sql.DB
 }
 
-type versionedFlag struct {
+type flag struct {
 	Version uint
 	Value   bool
 }
@@ -279,7 +279,7 @@ func (f *flagResource) Permissions() int {
 }
 
 func (f *flagResource) Get(enc Encoder) error {
-	flag := versionedFlag{0, false}
+	flag := flag{0, false}
 	err := f.db.QueryRow("SELECT flag, flag_version FROM projects WHERE id=?", f.pid).Scan(&(flag.Value), &(flag.Version))
 	if err != nil {
 		return err
@@ -289,14 +289,14 @@ func (f *flagResource) Get(enc Encoder) error {
 
 func (f *flagResource) Set(dec Decoder) error {
 	// Decode the uploaded flag.
-	update := versionedFlag{0, false}
+	update := flag{0, false}
 	err := dec.Decode(&update)
 	if err != nil {
 		return InvalidBody
 	}
 
 	// Get the saved flag.
-	cur := versionedFlag{0, false}
+	cur := flag{0, false}
 	err = f.db.QueryRow("SELECT flag, flag_version FROM projects WHERE id=?", f.pid).Scan(&(cur.Value), &(cur.Version))
 	if err != nil {
 		return err
