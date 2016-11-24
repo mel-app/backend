@@ -532,7 +532,19 @@ func (d *deliverableResource) Delete() error {
 
 func NewDeliverable(user string, id uint, pid uint, db *sql.DB) (Resource, error) {
 	proj, err := NewProject(user, pid, db)
-	return &deliverableResource{resource{}, id, pid, proj, db}, err
+	if err != nil {
+		return nil, err
+	}
+
+	// Check that the deliverable actually exists.
+	dbpid := 0
+	err = db.QueryRow("SELECT pid FROM deliverables WHERE id=? and pid=?", id, pid).Scan(&dbpid)
+	if err == sql.ErrNoRows {
+		return nil, InvalidResource
+	} else if err != nil {
+		return nil, err
+	}
+	return &deliverableResource{resource{}, id, pid, proj, db}, nil
 }
 
 // FromURI returns the resource corresponding to the given URI.
