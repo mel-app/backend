@@ -145,15 +145,24 @@ func handle(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	// Respond.
+	enc := json.NewEncoder(writer)
+	enc.SetEscapeHTML(true)
 	switch request.Method {
 	case http.MethodGet:
-		enc := json.NewEncoder(writer)
-		enc.SetEscapeHTML(true)
 		err = resource.Get(enc)
 	case http.MethodPut:
 		err = resource.Set(json.NewDecoder(request.Body))
 	case http.MethodPost:
-		err = resource.Create(json.NewDecoder(request.Body))
+		// Posts need to return 201 with a Location header with the URI to the
+		// newly created resource.
+		// They should also use enc to write a representation of the object
+		// created, preferably including the id.
+		err = resource.Create(json.NewDecoder(request.Body),
+			func(location string, item interface{}) error {
+				writer.Header().Add("Location", location)
+				writer.WriteHeader(http.StatusCreated)
+				return enc.Encode(item)
+			})
 	case http.MethodDelete:
 		err = resource.Delete()
 	default:

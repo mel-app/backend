@@ -33,6 +33,5 @@ be good to fix.
 - I should check that the database will always be in a consistent state.
 - The client list should probably use DELETE and PUT as partial operations?
 - Fix the client support so that managers only send changes to the client list.
-- POSTs should return a LOCATION header and a different status code.
 - Perhaps the database should be wrapped?
 

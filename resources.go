@@ -49,7 +49,7 @@ type Resource interface {
 	Permissions() int
 	Get(Encoder) error
 	Set(Decoder) error
-	Create(Decoder) error
+	Create(Decoder, func(string, interface{}) error) error
 	Delete() error
 }
 
@@ -93,7 +93,7 @@ func (r resource) Set(dec Decoder) error {
 	return InvalidMethod
 }
 
-func (r resource) Create(dec Decoder) error {
+func (r resource) Create(dec Decoder, success func(string, interface{}) error) error {
 	return InvalidMethod
 }
 
@@ -154,25 +154,26 @@ func (l *projectList) Get(enc Encoder) error {
 }
 
 // Create a new project.
-// FIXME: This should return a representation of the resulting item,
-// set a LOCATION header with the URI to retrieve the newly created item, and
-// return with a 201 code.
-func (l *projectList) Create(dec Decoder) error {
+func (l *projectList) Create(dec Decoder, success func(string, interface{}) error) error {
 	project := project{}
 	err := dec.Decode(&project)
 	if err != nil || ! project.valid() {
 		return InvalidBody
 	}
-	id := rand.Int()
+	project.Pid = uint(rand.Int())
 	_, err = l.db.Exec("INSERT INTO projects VALUES (?, ?, ?, ?, ?, ?)",
-		id, project.Name, project.Percentage, project.Description, false, 0)
+		project.Pid, project.Name, project.Percentage, project.Description,
+		false, 0)
 	if err != nil {
 		return err
 	}
 
 	// Add the user to the project.
-	_, err = l.db.Exec("INSERT INTO owns VALUES (?, ?)", l.user, id)
-	return err
+	_, err = l.db.Exec("INSERT INTO owns VALUES (?, ?)", l.user, project.Pid)
+	if err != nil {
+		return err
+	}
+	return success(fmt.Sprintf("/projects/%d", project.Pid), project)
 }
 
 func NewProjectList(user string, db *sql.DB) (Resource, error) {
@@ -500,16 +501,19 @@ func (l *deliverableList) Get(enc Encoder) error {
 }
 
 // Create for deliverableList creates a new deliverable.
-func (l *deliverableList) Create(dec Decoder) error {
+func (l *deliverableList) Create(dec Decoder, success func(string, interface{}) error) error {
 	v := deliverable{}
 	err := dec.Decode(&v)
 	if err != nil || !v.valid() {
 		return InvalidBody
 	}
-	id := rand.Int()
+	v.Id = uint(rand.Int())
 	_, err = l.db.Exec("INSERT INTO deliverables VALUES (?, ?, ?, ?, ?, ?)",
-		id, l.pid, v.Name, v.Due, v.Percentage, v.Description)
-	return err
+		v.Id, l.pid, v.Name, v.Due, v.Percentage, v.Description)
+	if err != nil {
+		return err
+	}
+	return success(fmt.Sprintf("/projects/%d/deliverables/%d", l.pid, v.Id), v)
 }
 
 func NewDeliverableList(user string, pid uint, db *sql.DB) (Resource, error) {
@@ -526,6 +530,7 @@ type deliverableResource struct {
 }
 
 type deliverable struct {
+	Id          uint
 	Name        string
 	Due         string
 	Percentage  uint
