@@ -75,7 +75,7 @@ var (
 type resource struct {}
 
 func (r resource) Permissions() int {
-	return 0
+	return Get | Set | Create | Delete
 }
 
 func (r resource) Get(enc Encoder) error {
@@ -103,10 +103,6 @@ type login struct {
 // FIXME: Implement Set as a way of changing passwords.
 // FIXME: Figure out how to move the login creation from authenticateUser to
 // Create here.
-
-func (l *login) Permissions() int {
-	return Get | Set | Create
-}
 
 func (l *login) Get(enc Encoder) error {
 	return nil // No-op - for checking login credentials.
