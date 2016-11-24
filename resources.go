@@ -67,6 +67,29 @@ var (
 	deliverableRe     = regexp.MustCompile(`\A/projects/(\d+)/deliverables/(\d+)\z`)
 )
 
+type login struct {
+	user string
+	db   *sql.DB
+}
+
+func (l *login) Permissions() int {
+	return Get | Set | Create
+}
+
+func (l *login) Get(enc Encoder) error {
+	return nil // No-op - for checking login credentials.
+}
+
+func (l *login) Set(dec Decoder) error {
+	// FIXME: Implement this as a way of changing user passwords.
+	return InvalidMethod
+}
+
+func (l *login) Create(dec Decoder) error {
+	// FIXME: Figure out how to move the login creation from authenticateUser.
+	return nil // Implemented in backend.go as a special case.
+}
+
 type projectList struct {
 	user string
 	permissions int
@@ -151,29 +174,6 @@ func NewProjectList(user string, db *sql.DB) (Resource, error) {
 		p.permissions |= Create
 	}
 	return &p, nil
-}
-
-type login struct {
-	user string
-	db   *sql.DB
-}
-
-func (l *login) Permissions() int {
-	return Get | Set | Create
-}
-
-func (l *login) Get(enc Encoder) error {
-	return nil // No-op - for checking login credentials.
-}
-
-func (l *login) Set(dec Decoder) error {
-	// FIXME: Implement this as a way of changing user passwords.
-	return InvalidMethod
-}
-
-func (l *login) Create(dec Decoder) error {
-	// FIXME: Figure out how to move the login creation from authenticateUser.
-	return nil // Implemented in backend.go as a special case.
 }
 
 type projectResource struct {
