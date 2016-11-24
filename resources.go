@@ -169,7 +169,7 @@ func (l *projectList) Create(dec Decoder) error {
 	// Now create the project.
 	project := project{}
 	err = dec.Decode(&project)
-	if err != nil {
+	if err != nil || ! project.valid() {
 		return InvalidBody
 	}
 	_, err = l.db.Exec("INSERT INTO projects VALUES (?, ?, ?, ?, ?, ?)",
@@ -213,6 +213,14 @@ type project struct {
 	Owns bool
 }
 
+// valid returns true if the given project looks like it should fit in the
+// database with no errors.
+func (p project) valid() bool {
+	return (p.Percentage <= 100) &&
+		(len(p.Name) < dbNameLen) && (len(p.Name) > 0) &&
+		(len(p.Description) < dbDescLen) && (len(p.Description) > 0)
+}
+
 func (p *projectResource) Permissions() int {
 	return p.permissions
 }
@@ -235,7 +243,7 @@ func (p *projectResource) Get(enc Encoder) error {
 func (p *projectResource) Set(dec Decoder) error {
 	project := project{}
 	err := dec.Decode(&project)
-	if err != nil {
+	if err != nil || ! project.valid() || project.Pid != p.pid {
 		return InvalidBody
 	}
 	_, err = p.db.Exec("UPDATE projects SET name=?, percentage=?, description=? WHERE id=?",
