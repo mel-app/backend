@@ -17,5 +17,6 @@
 - Perhaps the database should be wrapped?
 - POSTs should return a LOCATION header and a different status code.
 - Wrap the version code and make it generic; apply it to everything.
+- Test coverage is sparse.
 - Implement DELETE.
 
