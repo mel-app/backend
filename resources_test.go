@@ -287,7 +287,7 @@ func TestFlagSet(t *testing.T) {
 		t.Fatalf("opening database: %s", err)
 	}
 
-	f := flag{resource{}, 1, nil, db}
+	f := flagResource{resource{}, 1, nil, db}
 
 	check := func(name string, update, existing, result versionedFlag) {
 		t.Run(name, func(t *testing.T) {

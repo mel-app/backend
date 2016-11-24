@@ -258,7 +258,7 @@ func NewProject(user string, pid uint, db *sql.DB) (Resource, error) {
 	return &p, nil
 }
 
-type flag struct {
+type flagResource struct {
 	Resource
 	pid     uint
 	project Resource
@@ -270,7 +270,7 @@ type versionedFlag struct {
 	Value   bool
 }
 
-func (f *flag) Permissions() int {
+func (f *flagResource) Permissions() int {
 	// Everyone can read and write to the flag.
 	if Get&f.project.Permissions() != 0 {
 		return Get | Set
@@ -278,7 +278,7 @@ func (f *flag) Permissions() int {
 	return 0
 }
 
-func (f *flag) Get(enc Encoder) error {
+func (f *flagResource) Get(enc Encoder) error {
 	flag := versionedFlag{0, false}
 	err := f.db.QueryRow("SELECT flag, flag_version FROM projects WHERE id=?", f.pid).Scan(&(flag.Value), &(flag.Version))
 	if err != nil {
@@ -287,7 +287,7 @@ func (f *flag) Get(enc Encoder) error {
 	return enc.Encode(flag)
 }
 
-func (f *flag) Set(dec Decoder) error {
+func (f *flagResource) Set(dec Decoder) error {
 	// Decode the uploaded flag.
 	update := versionedFlag{0, false}
 	err := dec.Decode(&update)
@@ -321,7 +321,7 @@ func (f *flag) Set(dec Decoder) error {
 
 func NewFlag(user string, pid uint, db *sql.DB) (Resource, error) {
 	proj, err := NewProject(user, pid, db)
-	return &flag{resource{}, pid, proj, db}, err
+	return &flagResource{resource{}, pid, proj, db}, err
 }
 
 type clients struct {
