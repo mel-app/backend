@@ -2,6 +2,10 @@
 
 - Sometimes InvalidMethod/Forbidden/404 is returned when another value should
   be - eg PUT /projects will return a Forbidden instead of InvalidMethod.
+  To fix this, the permissions code should be inverted to list "Forbidden"
+  accesses instead.
+- In line with the above, consider authenticating *after* creating the resource
+  and including a flag for when authentication is not required.
 - I should do some performance profiling - things seem suprisingly slow.
 - I should check that the database will always be in a consistent state.
 - Versioning only works for the flag.
