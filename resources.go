@@ -101,6 +101,7 @@ type login struct {
 }
 
 // FIXME: Implement Set as a way of changing passwords.
+// FIXME: Implement Delete as a way of deleting an account.
 // FIXME: Figure out how to move the login creation from authenticateUser to
 // Create here.
 
