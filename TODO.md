@@ -18,5 +18,8 @@
 - POSTs should return a LOCATION header and a different status code.
 - Wrap the version code and make it generic; apply it to everything.
 - Test coverage is sparse.
-- Implement DELETE.
+- Implement DELETE for user accounts.
+- Support multiple managers for each project.
+- Consider supporting "sharing" projects?
+- Fix the client support so that managers only send changes to the client list.
 
