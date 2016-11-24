@@ -460,7 +460,7 @@ func (l *deliverableList) Create(dec Decoder) error {
 	}
 
 	// Now create the project.
-	v := deliverableValue{}
+	v := deliverable{}
 	err = dec.Decode(&v)
 	if err != nil {
 		return InvalidBody
@@ -476,7 +476,7 @@ func NewDeliverableList(user string, pid uint, db *sql.DB) (Resource, error) {
 	return &deliverableList{resource{}, pid, proj, db}, err
 }
 
-type deliverable struct {
+type deliverableResource struct {
 	Resource
 	id      uint
 	pid     uint
@@ -484,22 +484,22 @@ type deliverable struct {
 	db      *sql.DB
 }
 
-type deliverableValue struct {
+type deliverable struct {
 	Name        string
 	Due         string
 	Percentage  uint
 	Description string
 }
 
-func (d *deliverable) Permissions() int {
+func (d *deliverableResource) Permissions() int {
 	if Set&d.project.Permissions() != 0 {
 		return Get | Set | Create | Delete
 	}
 	return Get&d.project.Permissions()
 }
 
-func (d *deliverable) Get(enc Encoder) error {
-	v := deliverableValue{}
+func (d *deliverableResource) Get(enc Encoder) error {
+	v := deliverable{}
 	err := d.db.QueryRow("SELECT name, due, percentage, description FROM deliverables WHERE id=? and pid=?", d.id, d.pid).
 		Scan(&v.Name, &v.Due, &v.Percentage, &v.Description)
 	// TODO: We don't validate the resource name while creating it so this
@@ -512,8 +512,8 @@ func (d *deliverable) Get(enc Encoder) error {
 	return enc.Encode(v)
 }
 
-func (d *deliverable) Set(dec Decoder) error {
-	v := deliverableValue{}
+func (d *deliverableResource) Set(dec Decoder) error {
+	v := deliverable{}
 	err := dec.Decode(&v)
 	if err != nil {
 		return InvalidBody
@@ -531,7 +531,7 @@ func (d *deliverableResource) Delete() error {
 
 func NewDeliverable(user string, id uint, pid uint, db *sql.DB) (Resource, error) {
 	proj, err := NewProject(user, pid, db)
-	return &deliverable{resource{}, id, pid, proj, db}, err
+	return &deliverableResource{resource{}, id, pid, proj, db}, err
 }
 
 // FromURI returns the resource corresponding to the given URI.
