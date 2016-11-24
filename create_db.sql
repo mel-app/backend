@@ -7,7 +7,7 @@ CREATE TABLE users (
 );
 CREATE TABLE projects (
     id INT PRIMARY KEY, -- Is this required??
-    name NVARCHAR(100), -- Type??
+    name NVARCHAR(128), -- Type??
     percentage SMALLINT CHECK (percentage >= 0 and percentage <= 100),
     description NVARCHAR(512), -- Size??
     flag BOOL,
