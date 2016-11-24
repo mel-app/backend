@@ -30,8 +30,8 @@ otherwise.
 - projects/pID/deliverables: list of project deliverables
 - projects/pID/deliverables/dID: deliverable state
 
-Use PUT to update existing objects, POST to request creating a new object, and
-GET to get the current state.
+For items, use GET to retrieve, DELETE to remove, and PUT to update.
+For lists, use GET to retrieve, POST to request creating a new object.
 
 
 ## Syncronising ##
