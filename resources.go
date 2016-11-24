@@ -525,15 +525,11 @@ func (l *deliverableList) Create(dec Decoder) error {
 	// Now create the project.
 	v := deliverable{}
 	err = dec.Decode(&v)
-	if err != nil {
-		return InvalidBody
-	}
-	if !v.valid() {
+	if err != nil || !v.valid() {
 		return InvalidBody
 	}
 	_, err = l.db.Exec("INSERT INTO deliverables VALUES (?, ?, ?, ?, ?, ?)",
 		id, l.pid, v.Name, v.Due, v.Percentage, v.Description)
-	// TODO: This may not be an "internal server error" - check first.
 	return err
 }
 
@@ -586,10 +582,7 @@ func (d *deliverableResource) Get(enc Encoder) error {
 func (d *deliverableResource) Set(dec Decoder) error {
 	v := deliverable{}
 	err := dec.Decode(&v)
-	if err != nil {
-		return InvalidBody
-	}
-	if !v.valid() {
+	if err != nil || !v.valid() {
 		return InvalidBody
 	}
 	_, err = d.db.Exec("UPDATE deliverables SET name=?, due=?, percentage=?, description=? WHERE id=? and pid=?",
