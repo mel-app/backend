@@ -54,11 +54,11 @@ type Resource interface {
 }
 
 // Fake encoder to allow extracting the current state from a get call.
-type MapEncoder struct {
+type mapEncoder struct {
 	current map[string]bool
 }
 
-func (m *MapEncoder) Encode(item interface{}) error {
+func (m *mapEncoder) Encode(item interface{}) error {
 	// FIXME: This is pretty ugly and inflexible. Perhaps use reflection
 	//  instead?
 	m.current[fmt.Sprintf("%v", item)] = true
@@ -410,7 +410,7 @@ func (c *clients) set(dec decoder) error {
 
 	// Populate the list of users in the database.
 	old := map[string]bool{} // user->removed
-	enc := MapEncoder{old}
+	enc := mapEncoder{old}
 	err := c.get(&enc)
 	if err != nil {
 		return err
