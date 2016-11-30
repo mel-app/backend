@@ -41,7 +41,7 @@ func handle(writer http.ResponseWriter, request *http.Request) {
 
 	// get the corresponding resource and authenticate the request.
 	resource, err := FromURI(user, request.URL.Path, db)
-	if err == InvalidResource {
+	if err == invalidResource {
 		http.NotFound(writer, request)
 		return
 	} else if err != nil {
@@ -75,11 +75,11 @@ func handle(writer http.ResponseWriter, request *http.Request) {
 	case http.MethodDelete:
 		err = resource.delete()
 	default:
-		err = InvalidMethod
+		err = invalidMethod
 	}
-	if err == InvalidBody {
+	if err == invalidBody {
 		fail(http.StatusBadRequest)
-	} else if err == InvalidMethod {
+	} else if err == invalidMethod {
 		fail(http.StatusMethodNotAllowed)
 	} else if err != nil {
 		internalError(fail, err)

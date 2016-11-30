@@ -18,9 +18,9 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var InvalidResource error = fmt.Errorf("Invalid resource\n")
-var InvalidBody error = fmt.Errorf("Invalid body\n")
-var InvalidMethod error = fmt.Errorf("Invalid method\n")
+var invalidResource error = fmt.Errorf("Invalid resource\n")
+var invalidBody error = fmt.Errorf("Invalid body\n")
+var invalidMethod error = fmt.Errorf("Invalid method\n")
 
 // get/set permission types.
 const (
@@ -86,19 +86,19 @@ func (r resource) Permissions() int {
 }
 
 func (r resource) get(enc Encoder) error {
-	return InvalidMethod
+	return invalidMethod
 }
 
 func (r resource) set(dec Decoder) error {
-	return InvalidMethod
+	return invalidMethod
 }
 
 func (r resource) create(dec Decoder, success func(string, interface{}) error) error {
-	return InvalidMethod
+	return invalidMethod
 }
 
 func (r resource) delete() error {
-	return InvalidMethod
+	return invalidMethod
 }
 
 type login struct {
@@ -158,7 +158,7 @@ func (l *projectList) create(dec Decoder, success func(string, interface{}) erro
 	project := project{}
 	err := dec.Decode(&project)
 	if err != nil || ! project.valid() {
-		return InvalidBody
+		return invalidBody
 	}
 	project.Pid = uint(rand.Int())
 	_, err = l.db.Exec("INSERT INTO projects VALUES (?, ?, ?, ?, ?, ?)",
@@ -237,7 +237,7 @@ func (p *projectResource) set(dec Decoder) error {
 	project := project{}
 	err := dec.Decode(&project)
 	if err != nil || ! project.valid() || project.Pid != p.pid {
-		return InvalidBody
+		return invalidBody
 	}
 	_, err = p.db.Exec("UPDATE projects SET name=?, percentage=?, description=? WHERE id=?",
 		project.Name, project.Percentage, project.Description, p.pid)
@@ -338,7 +338,7 @@ func (f *flagResource) set(dec Decoder) error {
 	update := flag{0, false}
 	err := dec.Decode(&update)
 	if err != nil {
-		return InvalidBody
+		return invalidBody
 	}
 
 	// get the saved flag.
@@ -350,7 +350,7 @@ func (f *flagResource) set(dec Decoder) error {
 
 	// Reject invalid versions.
 	if update.Version > cur.Version {
-		return InvalidBody
+		return invalidBody
 	}
 
 	// Compare and sync.
@@ -421,7 +421,7 @@ func (c *clients) set(dec Decoder) error {
 		user := ""
 		err = dec.Decode(&user)
 		if err != nil {
-			return InvalidBody
+			return invalidBody
 		}
 		if _, ok := old[user]; !ok {
 			// New user; add it to the database.
@@ -430,7 +430,7 @@ func (c *clients) set(dec Decoder) error {
 			err = c.db.QueryRow("SELECT name FROM users WHERE name=?", user).
 				Scan(&dbuser)
 			if err == sql.ErrNoRows {
-				return InvalidBody
+				return invalidBody
 			} else if err != nil {
 				return err
 			}
@@ -505,7 +505,7 @@ func (l *deliverableList) create(dec Decoder, success func(string, interface{}) 
 	v := deliverable{}
 	err := dec.Decode(&v)
 	if err != nil || !v.valid() {
-		return InvalidBody
+		return invalidBody
 	}
 	v.Id = uint(rand.Int())
 	_, err = l.db.Exec("INSERT INTO deliverables VALUES (?, ?, ?, ?, ?, ?)",
@@ -567,7 +567,7 @@ func (d *deliverableResource) set(dec Decoder) error {
 	v := deliverable{}
 	err := dec.Decode(&v)
 	if err != nil || !v.valid() {
-		return InvalidBody
+		return invalidBody
 	}
 	_, err = d.db.Exec("UPDATE deliverables SET name=?, due=?, percentage=?, description=? WHERE id=? and pid=?",
 		v.Name, v.Due, v.Percentage, v.Description, d.id, d.pid)
@@ -590,7 +590,7 @@ func NewDeliverable(user string, id uint, pid uint, db *sql.DB) (Resource, error
 	dbpid := 0
 	err = db.QueryRow("SELECT pid FROM deliverables WHERE id=? and pid=?", id, pid).Scan(&dbpid)
 	if err == sql.ErrNoRows {
-		return nil, InvalidResource
+		return nil, invalidResource
 	} else if err != nil {
 		return nil, err
 	}
@@ -639,7 +639,7 @@ func FromURI(user, uri string, db *sql.DB) (Resource, error) {
 		}
 		return NewDeliverable(user, uint(id), uint(pid), db)
 	} else {
-		return nil, InvalidResource
+		return nil, invalidResource
 	}
 }
 
