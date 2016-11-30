@@ -1,5 +1,5 @@
 /*
-Tests for resource abstractions.
+Tests for defaultResource abstractions.
 
 Author:		Alastair Hughes
 Contact:	<hobbitalastair at yandex dot com>
@@ -109,7 +109,7 @@ func TestProjectListget(t *testing.T) {
 	mock.ExpectQuery("SELECT .* FROM views WHERE name=?").WillReturnRows(sqlmock.NewRows([]string{"pid"}).AddRow("0").AddRow("1"))
 	mock.ExpectQuery("SELECT .* FROM owns WHERE name=?").WillReturnRows(sqlmock.NewRows([]string{"pid"}).AddRow("2"))
 
-	l := projectList{resource{}, "test", 0, db}
+	l := projectList{defaultResource{}, "test", 0, db}
 	e := MockEncoder{[]string{}}
 	err = l.get(&e)
 	if err != nil {
@@ -182,7 +182,7 @@ func TestProjectget(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"name", "percentage",
 			"description"}).AddRow("test proj", "10", "Desc"))
 
-	p := projectResource{resource{}, 0, 0, db, "test"}
+	p := projectResource{defaultResource{}, 0, 0, db, "test"}
 	e := MockEncoder{[]string{}}
 	err = p.get(&e)
 	if err != nil {
@@ -205,7 +205,7 @@ func TestProjectset(t *testing.T) {
 		t.Fatalf("opening database: %s", err)
 	}
 
-	p := projectResource{resource{}, 1, 0, db, "test"}
+	p := projectResource{defaultResource{}, 1, 0, db, "test"}
 
 	check := func(t *testing.T, d decoder, expErr error) {
 		if expErr == nil {
@@ -277,7 +277,7 @@ func TestClientsset(t *testing.T) {
 		t.Fatalf("opening database: %s", err)
 	}
 
-	c := clients{resource{}, 1, nil, db}
+	c := clients{defaultResource{}, 1, nil, db}
 
 	check := func(t *testing.T, update, existing []string) {
 		rows := sqlmock.NewRows([]string{"name"})
@@ -360,7 +360,7 @@ func TestFlagset(t *testing.T) {
 		t.Fatalf("opening database: %s", err)
 	}
 
-	f := flagResource{resource{}, 1, nil, db}
+	f := flagResource{defaultResource{}, 1, nil, db}
 
 	check := func(name string, update, existing, result flag) {
 		t.Run(name, func(t *testing.T) {

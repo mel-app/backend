@@ -18,7 +18,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var invalidResource error = fmt.Errorf("Invalid resource\n")
+var invalidResource error = fmt.Errorf("Invalid defaultResource\n")
 var invalidBody error = fmt.Errorf("Invalid body\n")
 var invalidMethod error = fmt.Errorf("Invalid method\n")
 
@@ -44,8 +44,8 @@ type decoder interface {
 	More() bool
 }
 
-// Interface for the various resource types.
-type Resource interface {
+// Interface for the various defaultResource types.
+type resource interface {
 	Permissions() int
 	get(encoder) error
 	set(decoder) error
@@ -65,7 +65,7 @@ func (m *mapEncoder) Encode(item interface{}) error {
 	return nil
 }
 
-// Regular expressions for the various resources.
+// Regular expressions for the various defaultResources.
 var (
 	loginRe           = regexp.MustCompile(`\A/login\z`)
 	projectListRe     = regexp.MustCompile(`\A/projects\z`)
@@ -77,32 +77,32 @@ var (
 )
 
 
-// resource provides a default implementation of all of the methods required
-// to implement Resource.
-type resource struct {}
+// defaultResource provides a default implementation of all of the methods required
+// to implement resource.
+type defaultResource struct {}
 
-func (r resource) Permissions() int {
+func (r defaultResource) Permissions() int {
 	return get | set | create | delete
 }
 
-func (r resource) get(enc encoder) error {
+func (r defaultResource) get(enc encoder) error {
 	return invalidMethod
 }
 
-func (r resource) set(dec decoder) error {
+func (r defaultResource) set(dec decoder) error {
 	return invalidMethod
 }
 
-func (r resource) create(dec decoder, success func(string, interface{}) error) error {
+func (r defaultResource) create(dec decoder, success func(string, interface{}) error) error {
 	return invalidMethod
 }
 
-func (r resource) delete() error {
+func (r defaultResource) delete() error {
 	return invalidMethod
 }
 
 type login struct {
-	Resource
+	resource
 	user string
 	db   *sql.DB
 }
@@ -117,7 +117,7 @@ func (l *login) get(enc encoder) error {
 }
 
 type projectList struct {
-	Resource
+	resource
 	user string
 	permissions int
 	db   *sql.DB
@@ -176,8 +176,8 @@ func (l *projectList) create(dec decoder, success func(string, interface{}) erro
 	return success(fmt.Sprintf("/projects/%d", project.Pid), project)
 }
 
-func NewProjectList(user string, db *sql.DB) (Resource, error) {
-	p := projectList{resource{}, user, get, db}
+func NewProjectList(user string, db *sql.DB) (resource, error) {
+	p := projectList{defaultResource{}, user, get, db}
 	// Check if the user is a manager.
 	is_manager := false
 	err := db.QueryRow("SELECT is_manager FROM users WHERE name=?", user).Scan(&is_manager)
@@ -191,7 +191,7 @@ func NewProjectList(user string, db *sql.DB) (Resource, error) {
 }
 
 type projectResource struct {
-	Resource
+	resource
 	pid         uint
 	permissions int
 	db          *sql.DB
@@ -283,8 +283,8 @@ func (p *projectResource) delete() error {
 	return err
 }
 
-func NewProject(user string, pid uint, db *sql.DB) (Resource, error) {
-	p := projectResource{resource{}, pid, 0, db, user}
+func NewProject(user string, pid uint, db *sql.DB) (resource, error) {
+	p := projectResource{defaultResource{}, pid, 0, db, user}
 
 	// Find the user.
 	dbpid := 0
@@ -305,9 +305,9 @@ func NewProject(user string, pid uint, db *sql.DB) (Resource, error) {
 }
 
 type flagResource struct {
-	Resource
+	resource
 	pid     uint
-	project Resource
+	project resource
 	db      *sql.DB
 }
 
@@ -365,15 +365,15 @@ func (f *flagResource) set(dec decoder) error {
 	return nil
 }
 
-func NewFlag(user string, pid uint, db *sql.DB) (Resource, error) {
+func NewFlag(user string, pid uint, db *sql.DB) (resource, error) {
 	proj, err := NewProject(user, pid, db)
-	return &flagResource{resource{}, pid, proj, db}, err
+	return &flagResource{defaultResource{}, pid, proj, db}, err
 }
 
 type clients struct {
-	Resource
+	resource
 	pid     uint
-	project Resource
+	project resource
 	db      *sql.DB
 }
 
@@ -458,15 +458,15 @@ func (c *clients) set(dec decoder) error {
 	return nil
 }
 
-func NewClients(user string, pid uint, db *sql.DB) (Resource, error) {
+func NewClients(user string, pid uint, db *sql.DB) (resource, error) {
 	proj, err := NewProject(user, pid, db)
-	return &clients{resource{}, pid, proj, db}, err
+	return &clients{defaultResource{}, pid, proj, db}, err
 }
 
 type deliverableList struct {
-	Resource
+	resource
 	pid     uint
-	project Resource
+	project resource
 	db      *sql.DB
 }
 
@@ -516,16 +516,16 @@ func (l *deliverableList) create(dec decoder, success func(string, interface{}) 
 	return success(fmt.Sprintf("/projects/%d/deliverables/%d", l.pid, v.Id), v)
 }
 
-func NewDeliverableList(user string, pid uint, db *sql.DB) (Resource, error) {
+func NewDeliverableList(user string, pid uint, db *sql.DB) (resource, error) {
 	proj, err := NewProject(user, pid, db)
-	return &deliverableList{resource{}, pid, proj, db}, err
+	return &deliverableList{defaultResource{}, pid, proj, db}, err
 }
 
 type deliverableResource struct {
-	Resource
+	resource
 	id      uint
 	pid     uint
-	project Resource
+	project resource
 	db      *sql.DB
 }
 
@@ -580,7 +580,7 @@ func (d *deliverableResource) delete() error {
 	return err
 }
 
-func NewDeliverable(user string, id uint, pid uint, db *sql.DB) (Resource, error) {
+func NewDeliverable(user string, id uint, pid uint, db *sql.DB) (resource, error) {
 	proj, err := NewProject(user, pid, db)
 	if err != nil {
 		return nil, err
@@ -594,14 +594,14 @@ func NewDeliverable(user string, id uint, pid uint, db *sql.DB) (Resource, error
 	} else if err != nil {
 		return nil, err
 	}
-	return &deliverableResource{resource{}, id, pid, proj, db}, nil
+	return &deliverableResource{defaultResource{}, id, pid, proj, db}, nil
 }
 
-// FromURI returns the resource corresponding to the given URI.
-func FromURI(user, uri string, db *sql.DB) (Resource, error) {
+// FromURI returns the defaultResource corresponding to the given URI.
+func FromURI(user, uri string, db *sql.DB) (resource, error) {
 	// Match the path to the regular expressions.
 	if loginRe.MatchString(uri) {
-		return &login{resource{}, user, db}, nil
+		return &login{defaultResource{}, user, db}, nil
 	} else if projectListRe.MatchString(uri) {
 		return NewProjectList(user, db)
 	} else if projectRe.MatchString(uri) {

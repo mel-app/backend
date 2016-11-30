@@ -39,8 +39,8 @@ func handle(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	// get the corresponding resource and authenticate the request.
-	resource, err := FromURI(user, request.URL.Path, db)
+	// get the corresponding defaultResource and authenticate the request.
+	defaultResource, err := FromURI(user, request.URL.Path, db)
 	if err == invalidResource {
 		http.NotFound(writer, request)
 		return
@@ -48,7 +48,7 @@ func handle(writer http.ResponseWriter, request *http.Request) {
 		internalError(fail, err)
 		return
 	}
-	if !authenticateRequest(request, resource) {
+	if !authenticateRequest(request, defaultResource) {
 		fail(http.StatusForbidden)
 		return
 	}
@@ -58,22 +58,22 @@ func handle(writer http.ResponseWriter, request *http.Request) {
 	enc.SetEscapeHTML(true)
 	switch request.Method {
 	case http.MethodGet:
-		err = resource.get(enc)
+		err = defaultResource.get(enc)
 	case http.MethodPut:
-		err = resource.set(json.NewDecoder(request.Body))
+		err = defaultResource.set(json.NewDecoder(request.Body))
 	case http.MethodPost:
 		// Posts need to return 201 with a Location header with the URI to the
-		// newly created resource.
+		// newly created defaultResource.
 		// They should also use enc to write a representation of the object
 		// created, preferably including the id.
-		err = resource.create(json.NewDecoder(request.Body),
+		err = defaultResource.create(json.NewDecoder(request.Body),
 			func(location string, item interface{}) error {
 				writer.Header().Add("Location", location)
 				writer.WriteHeader(http.StatusCreated)
 				return enc.Encode(item)
 			})
 	case http.MethodDelete:
-		err = resource.delete()
+		err = defaultResource.delete()
 	default:
 		err = invalidMethod
 	}
