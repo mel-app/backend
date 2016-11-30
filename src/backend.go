@@ -11,6 +11,7 @@ package backend
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"database/sql"
@@ -84,12 +85,14 @@ func handle(writer http.ResponseWriter, request *http.Request, dbtype, dbname st
 // Run the server on the given port, connecting to the given database.
 // dbtype and dbname are passed to the sql module's open function.
 func Run(port, dbtype, dbname string) {
+	log.Printf("Running on port :%s, with dbtype %s and dbname %s\n", port,
+		dbtype, dbname)
 	seed()
-	http.ListenAndServe(":"+port,
+	log.Fatal(http.ListenAndServe(":"+port,
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			handle(w, r, dbtype, dbname)
 		}),
-	)
+	))
 }
 
 // vim: sw=4 ts=4 noexpandtab
