@@ -207,7 +207,7 @@ func TestProjectset(t *testing.T) {
 
 	p := projectResource{resource{}, 1, 0, db, "test"}
 
-	check := func(t *testing.T, d Decoder, expErr error) {
+	check := func(t *testing.T, d decoder, expErr error) {
 		if expErr == nil {
 			mock.ExpectExec("UPDATE projects SET .* WHERE id=.*").
 				WithArgs("test proj", 10, "Desc", 1).
