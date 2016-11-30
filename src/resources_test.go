@@ -74,7 +74,7 @@ func TestProjectListPermissions(t *testing.T) {
 	}
 
 	check := func(t *testing.T, expected int) {
-		p, err := NewProjectList("test", db)
+		p, err := newProjectList("test", db)
 		if err != nil {
 			t.Fatalf("Unexpected error %q", err)
 		}
@@ -142,7 +142,7 @@ func TestProjectPermissions(t *testing.T) {
 	}
 
 	check := func(t *testing.T, expected int) {
-		p, err := NewProject("test", 0, db)
+		p, err := newProject("test", 0, db)
 		if err != nil {
 			t.Fatalf("Unexpected error %q", err)
 		}
@@ -244,7 +244,7 @@ func TestClientsPermissions(t *testing.T) {
 	}
 
 	check := func(t *testing.T, expected int) {
-		c, err := NewClients("test", 0, db)
+		c, err := newClients("test", 0, db)
 		if err != nil {
 			t.Fatalf("Unexpected error %q", err)
 		}

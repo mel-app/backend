@@ -176,7 +176,7 @@ func (l *projectList) create(dec decoder, success func(string, interface{}) erro
 	return success(fmt.Sprintf("/projects/%d", project.Pid), project)
 }
 
-func NewProjectList(user string, db *sql.DB) (resource, error) {
+func newProjectList(user string, db *sql.DB) (resource, error) {
 	p := projectList{defaultResource{}, user, get, db}
 	// Check if the user is a manager.
 	is_manager := false
@@ -283,7 +283,7 @@ func (p *projectResource) delete() error {
 	return err
 }
 
-func NewProject(user string, pid uint, db *sql.DB) (resource, error) {
+func newProject(user string, pid uint, db *sql.DB) (resource, error) {
 	p := projectResource{defaultResource{}, pid, 0, db, user}
 
 	// Find the user.
@@ -365,8 +365,8 @@ func (f *flagResource) set(dec decoder) error {
 	return nil
 }
 
-func NewFlag(user string, pid uint, db *sql.DB) (resource, error) {
-	proj, err := NewProject(user, pid, db)
+func newFlag(user string, pid uint, db *sql.DB) (resource, error) {
+	proj, err := newProject(user, pid, db)
 	return &flagResource{defaultResource{}, pid, proj, db}, err
 }
 
@@ -424,7 +424,7 @@ func (c *clients) set(dec decoder) error {
 			return invalidBody
 		}
 		if _, ok := old[user]; !ok {
-			// New user; add it to the database.
+			// new user; add it to the database.
 			// We first check that the user actually exists.
 			dbuser := ""
 			err = c.db.QueryRow("SELECT name FROM users WHERE name=?", user).
@@ -458,8 +458,8 @@ func (c *clients) set(dec decoder) error {
 	return nil
 }
 
-func NewClients(user string, pid uint, db *sql.DB) (resource, error) {
-	proj, err := NewProject(user, pid, db)
+func newClients(user string, pid uint, db *sql.DB) (resource, error) {
+	proj, err := newProject(user, pid, db)
 	return &clients{defaultResource{}, pid, proj, db}, err
 }
 
@@ -516,8 +516,8 @@ func (l *deliverableList) create(dec decoder, success func(string, interface{}) 
 	return success(fmt.Sprintf("/projects/%d/deliverables/%d", l.pid, v.Id), v)
 }
 
-func NewDeliverableList(user string, pid uint, db *sql.DB) (resource, error) {
-	proj, err := NewProject(user, pid, db)
+func newDeliverableList(user string, pid uint, db *sql.DB) (resource, error) {
+	proj, err := newProject(user, pid, db)
 	return &deliverableList{defaultResource{}, pid, proj, db}, err
 }
 
@@ -580,8 +580,8 @@ func (d *deliverableResource) delete() error {
 	return err
 }
 
-func NewDeliverable(user string, id uint, pid uint, db *sql.DB) (resource, error) {
-	proj, err := NewProject(user, pid, db)
+func newDeliverable(user string, id uint, pid uint, db *sql.DB) (resource, error) {
+	proj, err := newProject(user, pid, db)
 	if err != nil {
 		return nil, err
 	}
@@ -603,31 +603,31 @@ func FromURI(user, uri string, db *sql.DB) (resource, error) {
 	if loginRe.MatchString(uri) {
 		return &login{defaultResource{}, user, db}, nil
 	} else if projectListRe.MatchString(uri) {
-		return NewProjectList(user, db)
+		return newProjectList(user, db)
 	} else if projectRe.MatchString(uri) {
 		pid, err := strconv.Atoi(projectRe.FindStringSubmatch(uri)[1])
 		if err != nil {
 			return nil, err
 		}
-		return NewProject(user, uint(pid), db)
+		return newProject(user, uint(pid), db)
 	} else if flagRe.MatchString(uri) {
 		pid, err := strconv.Atoi(flagRe.FindStringSubmatch(uri)[1])
 		if err != nil {
 			return nil, err
 		}
-		return NewFlag(user, uint(pid), db)
+		return newFlag(user, uint(pid), db)
 	} else if clientsRe.MatchString(uri) {
 		pid, err := strconv.Atoi(clientsRe.FindStringSubmatch(uri)[1])
 		if err != nil {
 			return nil, err
 		}
-		return NewClients(user, uint(pid), db)
+		return newClients(user, uint(pid), db)
 	} else if deliverableListRe.MatchString(uri) {
 		pid, err := strconv.Atoi(deliverableListRe.FindStringSubmatch(uri)[1])
 		if err != nil {
 			return nil, err
 		}
-		return NewDeliverableList(user, uint(pid), db)
+		return newDeliverableList(user, uint(pid), db)
 	} else if deliverableRe.MatchString(uri) {
 		pid, err := strconv.Atoi(deliverableRe.FindStringSubmatch(uri)[1])
 		if err != nil {
@@ -637,7 +637,7 @@ func FromURI(user, uri string, db *sql.DB) (resource, error) {
 		if err != nil {
 			return nil, err
 		}
-		return NewDeliverable(user, uint(id), uint(pid), db)
+		return newDeliverable(user, uint(id), uint(pid), db)
 	} else {
 		return nil, invalidResource
 	}
