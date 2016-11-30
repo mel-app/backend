@@ -5,7 +5,7 @@ Author:		Alastair Hughes
 Contact:	<hobbitalastair at yandex dot com>
 */
 
-package main
+package backend
 
 import (
 	"database/sql"
