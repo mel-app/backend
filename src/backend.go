@@ -87,7 +87,7 @@ func handle(writer http.ResponseWriter, request *http.Request) {
 }
 
 func run(port string) {
-	Seed()
+	seed()
 	http.ListenAndServe(port, http.HandlerFunc(handle))
 }
 

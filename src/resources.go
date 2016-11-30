@@ -643,9 +643,9 @@ func FromURI(user, uri string, db *sql.DB) (Resource, error) {
 	}
 }
 
-// Seed the PRNG.
+// seed the PRNG.
 // This *must* be called before using FromURI.
-func Seed() {
+func seed() {
 	rand.Seed(time.Now().Unix())
 }
 
