@@ -40,7 +40,7 @@ func handle(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	// get the corresponding defaultResource and authenticate the request.
-	defaultResource, err := FromURI(user, request.URL.Path, db)
+	defaultResource, err := fromURI(user, request.URL.Path, db)
 	if err == invalidResource {
 		http.NotFound(writer, request)
 		return

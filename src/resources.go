@@ -597,8 +597,8 @@ func newDeliverable(user string, id uint, pid uint, db *sql.DB) (resource, error
 	return &deliverableResource{defaultResource{}, id, pid, proj, db}, nil
 }
 
-// FromURI returns the defaultResource corresponding to the given URI.
-func FromURI(user, uri string, db *sql.DB) (resource, error) {
+// fromURI returns the defaultResource corresponding to the given URI.
+func fromURI(user, uri string, db *sql.DB) (resource, error) {
 	// Match the path to the regular expressions.
 	if loginRe.MatchString(uri) {
 		return &login{defaultResource{}, user, db}, nil
@@ -644,7 +644,7 @@ func FromURI(user, uri string, db *sql.DB) (resource, error) {
 }
 
 // seed the PRNG.
-// This *must* be called before using FromURI.
+// This *must* be called before using fromURI.
 func seed() {
 	rand.Seed(time.Now().Unix())
 }
