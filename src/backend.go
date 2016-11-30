@@ -14,15 +14,10 @@ import (
 	"net/http"
 
 	"database/sql"
-	_ "github.com/mattn/go-sqlite3"
 )
 
-// TODO: Should be the actual db, ...
-const dbtype = "sqlite3"
-const dbname = "test.db"
-
 // handle a single HTTP request.
-func handle(writer http.ResponseWriter, request *http.Request) {
+func handle(writer http.ResponseWriter, request *http.Request, dbtype, dbname string) {
 	// Wrapper for failing functions.
 	fail := func(status int) { http.Error(writer, http.StatusText(status), status) }
 
@@ -86,9 +81,15 @@ func handle(writer http.ResponseWriter, request *http.Request) {
 	}
 }
 
-func run(port string) {
+// Run the server on the given port, connecting to the given database.
+// dbtype and dbname are passed to the sql module's open function.
+func Run(port, dbtype, dbname string) {
 	seed()
-	http.ListenAndServe(port, http.HandlerFunc(handle))
+	http.ListenAndServe(":"+port,
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			handle(w, r, dbtype, dbname)
+		}),
+	)
 }
 
 // vim: sw=4 ts=4 noexpandtab
