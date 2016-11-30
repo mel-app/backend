@@ -76,10 +76,9 @@ var (
 	deliverableRe     = regexp.MustCompile(`\A/projects/(\d+)/deliverables/(\d+)\z`)
 )
 
-
 // defaultResource provides a default implementation of all of the methods required
 // to implement resource.
-type defaultResource struct {}
+type defaultResource struct{}
 
 func (r defaultResource) Permissions() int {
 	return get | set | create | delete
@@ -118,9 +117,9 @@ func (l *login) get(enc encoder) error {
 
 type projectList struct {
 	resource
-	user string
+	user        string
 	permissions int
-	db   *sql.DB
+	db          *sql.DB
 }
 
 func (l *projectList) Permissions() int {
@@ -157,7 +156,7 @@ func (l *projectList) get(enc encoder) error {
 func (l *projectList) create(dec decoder, success func(string, interface{}) error) error {
 	project := project{}
 	err := dec.Decode(&project)
-	if err != nil || ! project.valid() {
+	if err != nil || !project.valid() {
 		return invalidBody
 	}
 	project.Pid = uint(rand.Int())
@@ -199,11 +198,11 @@ type projectResource struct {
 }
 
 type project struct {
-	Pid uint
-	Name string
-	Percentage uint
+	Pid         uint
+	Name        string
+	Percentage  uint
 	Description string
-	Owns bool
+	Owns        bool
 }
 
 // valid returns true if the given project looks like it should fit in the
@@ -236,7 +235,7 @@ func (p *projectResource) get(enc encoder) error {
 func (p *projectResource) set(dec decoder) error {
 	project := project{}
 	err := dec.Decode(&project)
-	if err != nil || ! project.valid() || project.Pid != p.pid {
+	if err != nil || !project.valid() || project.Pid != p.pid {
 		return invalidBody
 	}
 	_, err = p.db.Exec("UPDATE projects SET name=?, percentage=?, description=? WHERE id=?",
@@ -550,7 +549,7 @@ func (d *deliverableResource) Permissions() int {
 	if set&d.project.Permissions() != 0 {
 		return get | set | create | delete
 	}
-	return get&d.project.Permissions()
+	return get & d.project.Permissions()
 }
 
 func (d *deliverableResource) get(enc encoder) error {
