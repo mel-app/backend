@@ -22,12 +22,12 @@ var InvalidResource error = fmt.Errorf("Invalid resource\n")
 var InvalidBody error = fmt.Errorf("Invalid body\n")
 var InvalidMethod error = fmt.Errorf("Invalid method\n")
 
-// Get/Set permission types.
+// get/set permission types.
 const (
-	Get = 1 << iota
-	Set
-	Create
-	Delete
+	get = 1 << iota
+	set
+	create
+	delete
 )
 
 const (
@@ -47,13 +47,13 @@ type Decoder interface {
 // Interface for the various resource types.
 type Resource interface {
 	Permissions() int
-	Get(Encoder) error
-	Set(Decoder) error
-	Create(Decoder, func(string, interface{}) error) error
-	Delete() error
+	get(Encoder) error
+	set(Decoder) error
+	create(Decoder, func(string, interface{}) error) error
+	delete() error
 }
 
-// Fake encoder to allow extracting the current state from a Get call.
+// Fake encoder to allow extracting the current state from a get call.
 type MapEncoder struct {
 	current map[string]bool
 }
@@ -82,22 +82,22 @@ var (
 type resource struct {}
 
 func (r resource) Permissions() int {
-	return Get | Set | Create | Delete
+	return get | set | create | delete
 }
 
-func (r resource) Get(enc Encoder) error {
+func (r resource) get(enc Encoder) error {
 	return InvalidMethod
 }
 
-func (r resource) Set(dec Decoder) error {
+func (r resource) set(dec Decoder) error {
 	return InvalidMethod
 }
 
-func (r resource) Create(dec Decoder, success func(string, interface{}) error) error {
+func (r resource) create(dec Decoder, success func(string, interface{}) error) error {
 	return InvalidMethod
 }
 
-func (r resource) Delete() error {
+func (r resource) delete() error {
 	return InvalidMethod
 }
 
@@ -107,12 +107,12 @@ type login struct {
 	db   *sql.DB
 }
 
-// FIXME: Implement Set as a way of changing passwords.
-// FIXME: Implement Delete as a way of deleting an account.
+// FIXME: Implement set as a way of changing passwords.
+// FIXME: Implement delete as a way of deleting an account.
 // FIXME: Figure out how to move the login creation from authenticateUser to
-// Create here.
+// create here.
 
-func (l *login) Get(enc Encoder) error {
+func (l *login) get(enc Encoder) error {
 	return nil // No-op - for checking login credentials.
 }
 
@@ -127,7 +127,7 @@ func (l *projectList) Permissions() int {
 	return l.permissions
 }
 
-func (l *projectList) Get(enc Encoder) error {
+func (l *projectList) get(enc Encoder) error {
 	for _, table := range []string{"views", "owns"} {
 		rows, err := l.db.Query(fmt.Sprintf("SELECT pid FROM %s WHERE name=?", table), l.user)
 		if err != nil {
@@ -153,8 +153,8 @@ func (l *projectList) Get(enc Encoder) error {
 	return nil
 }
 
-// Create a new project.
-func (l *projectList) Create(dec Decoder, success func(string, interface{}) error) error {
+// create a new project.
+func (l *projectList) create(dec Decoder, success func(string, interface{}) error) error {
 	project := project{}
 	err := dec.Decode(&project)
 	if err != nil || ! project.valid() {
@@ -177,7 +177,7 @@ func (l *projectList) Create(dec Decoder, success func(string, interface{}) erro
 }
 
 func NewProjectList(user string, db *sql.DB) (Resource, error) {
-	p := projectList{resource{}, user, Get, db}
+	p := projectList{resource{}, user, get, db}
 	// Check if the user is a manager.
 	is_manager := false
 	err := db.QueryRow("SELECT is_manager FROM users WHERE name=?", user).Scan(&is_manager)
@@ -185,7 +185,7 @@ func NewProjectList(user string, db *sql.DB) (Resource, error) {
 		return nil, err
 	}
 	if is_manager {
-		p.permissions |= Create
+		p.permissions |= create
 	}
 	return &p, nil
 }
@@ -218,22 +218,22 @@ func (p *projectResource) Permissions() int {
 	return p.permissions
 }
 
-func (p *projectResource) Get(enc Encoder) error {
+func (p *projectResource) get(enc Encoder) error {
 	name, percentage, description := "", 0, ""
 	err := p.db.QueryRow("SELECT name, percentage, description FROM projects WHERE id=?", p.pid).
 		Scan(&name, &percentage, &description)
 	if err != nil {
 		return err
 	}
-	project := project{p.pid, name, uint(percentage), description, p.permissions&Set != 0}
+	project := project{p.pid, name, uint(percentage), description, p.permissions&set != 0}
 	return enc.Encode(project)
 }
 
-// Set the project state on the server.
+// set the project state on the server.
 // We override any existing state as I have not implemented any kind
 // of synchronisation.
 // FIXME: Add synchronisation.
-func (p *projectResource) Set(dec Decoder) error {
+func (p *projectResource) set(dec Decoder) error {
 	project := project{}
 	err := dec.Decode(&project)
 	if err != nil || ! project.valid() || project.Pid != p.pid {
@@ -244,13 +244,13 @@ func (p *projectResource) Set(dec Decoder) error {
 	return err
 }
 
-// Delete the given project from the current user.
+// delete the given project from the current user.
 // This should remove the current user from the project.
 // If there are no managers left for the given project, delete it, any
 // deliverables, and any viewing relations involving it.
-func (p *projectResource) Delete() error {
+func (p *projectResource) delete() error {
 	var err error = nil
-	if p.permissions&Set == 0 {
+	if p.permissions&set == 0 {
 		// Not an owner.
 		_, err = p.db.Exec("DELETE FROM views WHERE name=? and pid=?",
 			p.user, p.pid)
@@ -292,9 +292,9 @@ func NewProject(user string, pid uint, db *sql.DB) (Resource, error) {
 		err := db.QueryRow(fmt.Sprintf("SELECT pid FROM %s WHERE name=? and pid=?", table), user, pid).Scan(&dbpid)
 		if err == nil {
 			if table == "owns" {
-				p.permissions |= Get | Set | Delete
+				p.permissions |= get | set | delete
 			} else {
-				p.permissions |= Get | Delete
+				p.permissions |= get | delete
 			}
 		} else if err != sql.ErrNoRows {
 			return nil, err
@@ -318,13 +318,13 @@ type flag struct {
 
 func (f *flagResource) Permissions() int {
 	// Everyone can read and write to the flag.
-	if Get&f.project.Permissions() != 0 {
-		return Get | Set
+	if get&f.project.Permissions() != 0 {
+		return get | set
 	}
 	return 0
 }
 
-func (f *flagResource) Get(enc Encoder) error {
+func (f *flagResource) get(enc Encoder) error {
 	flag := flag{0, false}
 	err := f.db.QueryRow("SELECT flag, flag_version FROM projects WHERE id=?", f.pid).Scan(&(flag.Value), &(flag.Version))
 	if err != nil {
@@ -333,7 +333,7 @@ func (f *flagResource) Get(enc Encoder) error {
 	return enc.Encode(flag)
 }
 
-func (f *flagResource) Set(dec Decoder) error {
+func (f *flagResource) set(dec Decoder) error {
 	// Decode the uploaded flag.
 	update := flag{0, false}
 	err := dec.Decode(&update)
@@ -341,7 +341,7 @@ func (f *flagResource) Set(dec Decoder) error {
 		return InvalidBody
 	}
 
-	// Get the saved flag.
+	// get the saved flag.
 	cur := flag{0, false}
 	err = f.db.QueryRow("SELECT flag, flag_version FROM projects WHERE id=?", f.pid).Scan(&(cur.Value), &(cur.Version))
 	if err != nil {
@@ -378,13 +378,13 @@ type clients struct {
 }
 
 func (c *clients) Permissions() int {
-	if c.project.Permissions()&Set != 0 {
-		return Get | Set
+	if c.project.Permissions()&set != 0 {
+		return get | set
 	}
 	return 0
 }
 
-func (c *clients) Get(enc Encoder) error {
+func (c *clients) get(enc Encoder) error {
 	rows, err := c.db.Query("SELECT name FROM views WHERE pid=?", c.pid)
 	if err != nil {
 		return err
@@ -405,13 +405,13 @@ func (c *clients) Get(enc Encoder) error {
 	return rows.Err()
 }
 
-func (c *clients) Set(dec Decoder) error {
+func (c *clients) set(dec Decoder) error {
 	// TODO: Implement syncronisation.
 
 	// Populate the list of users in the database.
 	old := map[string]bool{} // user->removed
 	enc := MapEncoder{old}
-	err := c.Get(&enc)
+	err := c.get(&enc)
 	if err != nil {
 		return err
 	}
@@ -471,15 +471,15 @@ type deliverableList struct {
 }
 
 func (l *deliverableList) Permissions() int {
-	if Set&l.project.Permissions() != 0 {
-		return Get | Create
-	} else if Get&l.project.Permissions() != 0 {
-		return Get
+	if set&l.project.Permissions() != 0 {
+		return get | create
+	} else if get&l.project.Permissions() != 0 {
+		return get
 	}
 	return 0
 }
 
-func (l *deliverableList) Get(enc Encoder) error {
+func (l *deliverableList) get(enc Encoder) error {
 	rows, err := l.db.Query("SELECT id FROM deliverables WHERE pid=?", l.pid)
 	if err != nil {
 		return err
@@ -500,8 +500,8 @@ func (l *deliverableList) Get(enc Encoder) error {
 	return rows.Err()
 }
 
-// Create for deliverableList creates a new deliverable.
-func (l *deliverableList) Create(dec Decoder, success func(string, interface{}) error) error {
+// create for deliverableList creates a new deliverable.
+func (l *deliverableList) create(dec Decoder, success func(string, interface{}) error) error {
 	v := deliverable{}
 	err := dec.Decode(&v)
 	if err != nil || !v.valid() {
@@ -547,13 +547,13 @@ func (d deliverable) valid() bool {
 }
 
 func (d *deliverableResource) Permissions() int {
-	if Set&d.project.Permissions() != 0 {
-		return Get | Set | Create | Delete
+	if set&d.project.Permissions() != 0 {
+		return get | set | create | delete
 	}
-	return Get&d.project.Permissions()
+	return get&d.project.Permissions()
 }
 
-func (d *deliverableResource) Get(enc Encoder) error {
+func (d *deliverableResource) get(enc Encoder) error {
 	v := deliverable{}
 	err := d.db.QueryRow("SELECT name, due, percentage, description FROM deliverables WHERE id=? and pid=?", d.id, d.pid).
 		Scan(&v.Name, &v.Due, &v.Percentage, &v.Description)
@@ -563,7 +563,7 @@ func (d *deliverableResource) Get(enc Encoder) error {
 	return enc.Encode(v)
 }
 
-func (d *deliverableResource) Set(dec Decoder) error {
+func (d *deliverableResource) set(dec Decoder) error {
 	v := deliverable{}
 	err := dec.Decode(&v)
 	if err != nil || !v.valid() {
@@ -574,7 +574,7 @@ func (d *deliverableResource) Set(dec Decoder) error {
 	return err
 }
 
-func (d *deliverableResource) Delete() error {
+func (d *deliverableResource) delete() error {
 	_, err := d.db.Exec("DELETE FROM deliverables WHERE id=? and pid=?",
 		d.id, d.pid)
 	return err

@@ -40,7 +40,7 @@ func encryptPassword(password string, salt []byte) ([]byte, error) {
 
 // authenticateUser checks that the user and password in the given HTTP request.
 func authenticateUser(writer http.ResponseWriter, fail func(int), request *http.Request, db *sql.DB) (user string, ok bool) {
-	// Get the user name and password.
+	// get the user name and password.
 	user, password, ok := request.BasicAuth()
 	if !ok {
 		writer.Header().Add("WWW-Authenticate", "basic realm=\"\"")
@@ -99,10 +99,10 @@ func authenticateUser(writer http.ResponseWriter, fail func(int), request *http.
 // authenticateRequest checks that the given user has permission to complete
 // the request.
 func authenticateRequest(request *http.Request, resource Resource) (ok bool) {
-	return ((request.Method == http.MethodGet) && (resource.Permissions()&Get != 0)) ||
-		((request.Method == http.MethodPut) && (resource.Permissions()&Set != 0)) ||
-		((request.Method == http.MethodPost) && (resource.Permissions()&Create != 0)) ||
-		((request.Method == http.MethodDelete) && (resource.Permissions()&Delete != 0))
+	return ((request.Method == http.MethodGet) && (resource.Permissions()&get != 0)) ||
+		((request.Method == http.MethodPut) && (resource.Permissions()&set != 0)) ||
+		((request.Method == http.MethodPost) && (resource.Permissions()&create != 0)) ||
+		((request.Method == http.MethodDelete) && (resource.Permissions()&delete != 0))
 }
 
 // vim: sw=4 ts=4 noexpandtab

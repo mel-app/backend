@@ -92,15 +92,15 @@ func TestProjectListPermissions(t *testing.T) {
 
 	t.Run("Not a manager", func(t *testing.T) {
 		initDB(t, false)
-		check(t, Get)
+		check(t, get)
 	})
 	t.Run("Manager", func(t *testing.T) {
 		initDB(t, true)
-		check(t, Get|Create)
+		check(t, get|create)
 	})
 }
 
-func TestProjectListGet(t *testing.T) {
+func TestProjectListget(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("opening database: %s", err)
@@ -111,7 +111,7 @@ func TestProjectListGet(t *testing.T) {
 
 	l := projectList{resource{}, "test", 0, db}
 	e := MockEncoder{[]string{}}
-	err = l.Get(&e)
+	err = l.get(&e)
 	if err != nil {
 		t.Errorf("Unexpected error %q", err)
 	}
@@ -164,15 +164,15 @@ func TestProjectPermissions(t *testing.T) {
 	})
 	t.Run("Views", func(t *testing.T) {
 		initDB(t, true, false)
-		check(t, Get|Delete)
+		check(t, get|delete)
 	})
 	t.Run("Owns", func(t *testing.T) {
 		initDB(t, false, true)
-		check(t, Get|Set|Delete)
+		check(t, get|set|delete)
 	})
 }
 
-func TestProjectGet(t *testing.T) {
+func TestProjectget(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("opening database: %s", err)
@@ -184,7 +184,7 @@ func TestProjectGet(t *testing.T) {
 
 	p := projectResource{resource{}, 0, 0, db, "test"}
 	e := MockEncoder{[]string{}}
-	err = p.Get(&e)
+	err = p.get(&e)
 	if err != nil {
 		t.Errorf("Unexpected error %q", err)
 	}
@@ -198,7 +198,7 @@ func TestProjectGet(t *testing.T) {
 	}
 }
 
-func TestProjectSet(t *testing.T) {
+func TestProjectset(t *testing.T) {
 	// TODO: Add test cases for synchronisation.
 	db, mock, err := sqlmock.New()
 	if err != nil {
@@ -213,7 +213,7 @@ func TestProjectSet(t *testing.T) {
 				WithArgs("test proj", 10, "Desc", 1).
 				WillReturnResult(sqlmock.NewResult(0, 0))
 		}
-		err := p.Set(d)
+		err := p.set(d)
 		if err != expErr {
 			t.Errorf("Expected error %v, got %v!", expErr, err)
 		}
@@ -266,11 +266,11 @@ func TestClientsPermissions(t *testing.T) {
 	})
 	t.Run("Owns", func(t *testing.T) {
 		initDB(t, false, true)
-		check(t, Get|Set)
+		check(t, get|set)
 	})
 }
 
-func TestClientsSet(t *testing.T) {
+func TestClientsset(t *testing.T) {
 	// TODO: Add test cases for synchronisation.
 	db, mock, err := sqlmock.New()
 	if err != nil {
@@ -315,7 +315,7 @@ func TestClientsSet(t *testing.T) {
 			}
 		}
 
-		err := c.Set(&MockDecoder{update, 0})
+		err := c.set(&MockDecoder{update, 0})
 		if err != nil {
 			t.Errorf("Unexpected error %v", err)
 		}
@@ -354,7 +354,7 @@ func (f *mockFlagDecoder) More() bool {
 	return false
 }
 
-func TestFlagSet(t *testing.T) {
+func TestFlagset(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("opening database: %s", err)
@@ -378,7 +378,7 @@ func TestFlagSet(t *testing.T) {
 					WithArgs(result.Value, result.Version, f.pid)
 			}
 
-			err := f.Set(&mockFlagDecoder{update})
+			err := f.set(&mockFlagDecoder{update})
 			if err != nil {
 				t.Errorf("Unexpected error %v", err)
 			}

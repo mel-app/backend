@@ -39,7 +39,7 @@ func handle(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	// Get the corresponding resource and authenticate the request.
+	// get the corresponding resource and authenticate the request.
 	resource, err := FromURI(user, request.URL.Path, db)
 	if err == InvalidResource {
 		http.NotFound(writer, request)
@@ -58,22 +58,22 @@ func handle(writer http.ResponseWriter, request *http.Request) {
 	enc.SetEscapeHTML(true)
 	switch request.Method {
 	case http.MethodGet:
-		err = resource.Get(enc)
+		err = resource.get(enc)
 	case http.MethodPut:
-		err = resource.Set(json.NewDecoder(request.Body))
+		err = resource.set(json.NewDecoder(request.Body))
 	case http.MethodPost:
 		// Posts need to return 201 with a Location header with the URI to the
 		// newly created resource.
 		// They should also use enc to write a representation of the object
 		// created, preferably including the id.
-		err = resource.Create(json.NewDecoder(request.Body),
+		err = resource.create(json.NewDecoder(request.Body),
 			func(location string, item interface{}) error {
 				writer.Header().Add("Location", location)
 				writer.WriteHeader(http.StatusCreated)
 				return enc.Encode(item)
 			})
 	case http.MethodDelete:
-		err = resource.Delete()
+		err = resource.delete()
 	default:
 		err = InvalidMethod
 	}
