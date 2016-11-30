@@ -10,6 +10,7 @@ package backend
 import (
 	"bytes"
 	"crypto/rand"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -24,6 +25,24 @@ const passwordSize = 256
 func internalError(fail func(int), err error) {
 	fail(http.StatusInternalServerError)
 	log.Printf("%q\n", err)
+}
+
+// SetPassword sets the given user's password.
+func SetPassword(user, password string, db *sql.DB) error {
+	salt := make([]byte, passwordSize)
+	err := db.QueryRow("SELECT salt FROM users WHERE name=?", user).Scan(&salt)
+	if err != nil {
+		return fmt.Errorf("Failed to find existing salt: %q\n", err)
+	}
+	key, err := encryptPassword(password, salt)
+	if err != nil {
+		return fmt.Errorf("Failed to encrypt the user password: %q\n", err)
+	}
+	_, err = db.Exec("UPDATE users SET password=? WHERE name=?", key, user)
+	if err != nil {
+		return fmt.Errorf("Failed to update the user password: %q\n", err)
+	}
+	return nil
 }
 
 // encryptPassword salts and encrypts the given password.
