@@ -34,4 +34,5 @@ be good to fix.
 - The client list should probably use DELETE and PUT as partial operations?
 - Fix the client support so that managers only send changes to the client list.
 - Perhaps the database should be wrapped?
+- We don't tell the user if they are a manager or not.
 
