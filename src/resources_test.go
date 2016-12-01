@@ -296,7 +296,7 @@ func TestClientsset(t *testing.T) {
 				}
 			}
 			if !in {
-				mock.ExpectQuery(`SELECT name FROM users WHERE name=\?`).
+				mock.ExpectQuery(`SELECT name FROM users WHERE name=.*`).
 					WithArgs(s).WillReturnRows(sqlmock.NewRows([]string{"name"}).AddRow(s))
 				mock.ExpectExec("INSERT INTO views VALUES .*").WithArgs(s, c.pid).WillReturnResult(sqlmock.NewResult(0, 0))
 			}
@@ -373,7 +373,7 @@ func TestFlagset(t *testing.T) {
 
 			// Expect for the result.
 			if existing.Value != result.Value {
-				mock.ExpectExec(`UPDATE projects SET flag=\?, flag_version=\? WHERE id=\?`).
+				mock.ExpectExec(`UPDATE projects SET flag=.*, flag_version=.* WHERE id=.*`).
 					WillReturnResult(sqlmock.NewResult(0, 0)).
 					WithArgs(result.Value, result.Version, f.pid)
 			}

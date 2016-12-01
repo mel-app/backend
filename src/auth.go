@@ -30,7 +30,7 @@ func internalError(fail func(int), err error) {
 // SetPassword sets the given user's password.
 func SetPassword(user, password string, db *sql.DB) error {
 	salt := make([]byte, passwordSize)
-	err := db.QueryRow("SELECT salt FROM users WHERE name=?", user).Scan(&salt)
+	err := db.QueryRow("SELECT salt FROM users WHERE name=$1", user).Scan(&salt)
 	if err != nil {
 		return fmt.Errorf("Failed to find existing salt: %q\n", err)
 	}
@@ -38,7 +38,7 @@ func SetPassword(user, password string, db *sql.DB) error {
 	if err != nil {
 		return fmt.Errorf("Failed to encrypt the user password: %q\n", err)
 	}
-	_, err = db.Exec("UPDATE users SET password=? WHERE name=?", key, user)
+	_, err = db.Exec("UPDATE users SET password=$1 WHERE name=$2", key, user)
 	if err != nil {
 		return fmt.Errorf("Failed to update the user password: %q\n", err)
 	}
@@ -70,7 +70,7 @@ func authenticateUser(writer http.ResponseWriter, fail func(int), request *http.
 	// Retrieve the salt and database password.
 	salt := make([]byte, passwordSize)
 	dbpassword := []byte("")
-	err := db.QueryRow("SELECT salt, password FROM users WHERE name=?", user).Scan(&salt, &dbpassword)
+	err := db.QueryRow("SELECT salt, password FROM users WHERE name=$1", user).Scan(&salt, &dbpassword)
 	if err == sql.ErrNoRows && request.URL.Path == "/login" && request.Method == http.MethodPost {
 		// FIXME: Special case creating a new user.
 		_, err = rand.Read(salt)
@@ -83,7 +83,7 @@ func authenticateUser(writer http.ResponseWriter, fail func(int), request *http.
 			internalError(fail, err)
 			return user, false
 		}
-		_, err = db.Exec("INSERT INTO users VALUES (?, ?, ?, ?)", user, salt, key, false)
+		_, err = db.Exec("INSERT INTO users VALUES ($1, $2, $3, $4)", user, salt, key, false)
 		if err != nil {
 			internalError(fail, err)
 			return user, false

@@ -128,7 +128,7 @@ func (l *projectList) Permissions() int {
 
 func (l *projectList) get(enc encoder) error {
 	for _, table := range []string{"views", "owns"} {
-		rows, err := l.db.Query(fmt.Sprintf("SELECT pid FROM %s WHERE name=?", table), l.user)
+		rows, err := l.db.Query(fmt.Sprintf("SELECT pid FROM %s WHERE name=$1", table), l.user)
 		if err != nil {
 			return err
 		}
@@ -160,7 +160,7 @@ func (l *projectList) create(dec decoder, success func(string, interface{}) erro
 		return invalidBody
 	}
 	project.Pid = uint(rand.Int())
-	_, err = l.db.Exec("INSERT INTO projects VALUES (?, ?, ?, ?, ?, ?)",
+	_, err = l.db.Exec("INSERT INTO projects VALUES ($1, $2, $3, $4, $5, $6)",
 		project.Pid, project.Name, project.Percentage, project.Description,
 		false, 0)
 	if err != nil {
@@ -168,7 +168,7 @@ func (l *projectList) create(dec decoder, success func(string, interface{}) erro
 	}
 
 	// Add the user to the project.
-	_, err = l.db.Exec("INSERT INTO owns VALUES (?, ?)", l.user, project.Pid)
+	_, err = l.db.Exec("INSERT INTO owns VALUES ($1, $2)", l.user, project.Pid)
 	if err != nil {
 		return err
 	}
@@ -179,7 +179,7 @@ func newProjectList(user string, db *sql.DB) (resource, error) {
 	p := projectList{defaultResource{}, user, get, db}
 	// Check if the user is a manager.
 	is_manager := false
-	err := db.QueryRow("SELECT is_manager FROM users WHERE name=?", user).Scan(&is_manager)
+	err := db.QueryRow("SELECT is_manager FROM users WHERE name=$1", user).Scan(&is_manager)
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +219,7 @@ func (p *projectResource) Permissions() int {
 
 func (p *projectResource) get(enc encoder) error {
 	name, percentage, description := "", 0, ""
-	err := p.db.QueryRow("SELECT name, percentage, description FROM projects WHERE id=?", p.pid).
+	err := p.db.QueryRow("SELECT name, percentage, description FROM projects WHERE id=$1", p.pid).
 		Scan(&name, &percentage, &description)
 	if err != nil {
 		return err
@@ -238,7 +238,7 @@ func (p *projectResource) set(dec decoder) error {
 	if err != nil || !project.valid() || project.Pid != p.pid {
 		return invalidBody
 	}
-	_, err = p.db.Exec("UPDATE projects SET name=?, percentage=?, description=? WHERE id=?",
+	_, err = p.db.Exec("UPDATE projects SET name=$1, percentage=$2, description=$3 WHERE id=$4",
 		project.Name, project.Percentage, project.Description, p.pid)
 	return err
 }
@@ -251,32 +251,32 @@ func (p *projectResource) delete() error {
 	var err error = nil
 	if p.permissions&set == 0 {
 		// Not an owner.
-		_, err = p.db.Exec("DELETE FROM views WHERE name=? and pid=?",
+		_, err = p.db.Exec("DELETE FROM views WHERE name=$1 and pid=$2",
 			p.user, p.pid)
 	} else {
 		// Project owner.
-		_, err = p.db.Exec("DELETE FROM owns WHERE name=? and pid=?",
+		_, err = p.db.Exec("DELETE FROM owns WHERE name=$1 and pid=$2",
 			p.user, p.pid)
 		if err != nil {
 			return err
 		}
 		// Check for other managers.
 		dbpid := 0
-		err = p.db.QueryRow("SELECT pid FROM owns WHERE name=? and pid=?",
+		err = p.db.QueryRow("SELECT pid FROM owns WHERE name=$1 and pid=$2",
 			p.user, p.pid).Scan(&dbpid)
 		if err == sql.ErrNoRows {
 			// Remove any viewers.
-			_, err = p.db.Exec("DELETE FROM views WHERE pid=?", p.pid)
+			_, err = p.db.Exec("DELETE FROM views WHERE pid=$1", p.pid)
 			if err != nil {
 				return err
 			}
 			// Remove any deliverables.
-			_, err = p.db.Exec("DELETE FROM deliverables WHERE pid=?", p.pid)
+			_, err = p.db.Exec("DELETE FROM deliverables WHERE pid=$1", p.pid)
 			if err != nil {
 				return err
 			}
 			// Remove the project.
-			_, err = p.db.Exec("DELETE FROM projects WHERE id=?", p.pid)
+			_, err = p.db.Exec("DELETE FROM projects WHERE id=$1", p.pid)
 		}
 	}
 	return err
@@ -288,7 +288,7 @@ func newProject(user string, pid uint, db *sql.DB) (resource, error) {
 	// Find the user.
 	dbpid := 0
 	for _, table := range []string{"views", "owns"} {
-		err := db.QueryRow(fmt.Sprintf("SELECT pid FROM %s WHERE name=? and pid=?", table), user, pid).Scan(&dbpid)
+		err := db.QueryRow(fmt.Sprintf("SELECT pid FROM %s WHERE name=$1 and pid=$2", table), user, pid).Scan(&dbpid)
 		if err == nil {
 			if table == "owns" {
 				p.permissions |= get | set | delete
@@ -325,7 +325,7 @@ func (f *flagResource) Permissions() int {
 
 func (f *flagResource) get(enc encoder) error {
 	flag := flag{0, false}
-	err := f.db.QueryRow("SELECT flag, flag_version FROM projects WHERE id=?", f.pid).Scan(&(flag.Value), &(flag.Version))
+	err := f.db.QueryRow("SELECT flag, flag_version FROM projects WHERE id=$1", f.pid).Scan(&(flag.Value), &(flag.Version))
 	if err != nil {
 		return err
 	}
@@ -342,7 +342,7 @@ func (f *flagResource) set(dec decoder) error {
 
 	// get the saved flag.
 	cur := flag{0, false}
-	err = f.db.QueryRow("SELECT flag, flag_version FROM projects WHERE id=?", f.pid).Scan(&(cur.Value), &(cur.Version))
+	err = f.db.QueryRow("SELECT flag, flag_version FROM projects WHERE id=$1", f.pid).Scan(&(cur.Value), &(cur.Version))
 	if err != nil {
 		return err
 	}
@@ -357,7 +357,7 @@ func (f *flagResource) set(dec decoder) error {
 	// use the value from the client and increment the server version.
 	// Otherwise, just use the server version.
 	if update.Version == cur.Version && update.Value != cur.Value {
-		_, err = f.db.Exec("UPDATE projects SET flag=?, flag_version=? WHERE id=?",
+		_, err = f.db.Exec("UPDATE projects SET flag=$1, flag_version=$2 WHERE id=$3",
 			update.Value, update.Version+1, f.pid)
 		return err
 	}
@@ -384,7 +384,7 @@ func (c *clients) Permissions() int {
 }
 
 func (c *clients) get(enc encoder) error {
-	rows, err := c.db.Query("SELECT name FROM views WHERE pid=?", c.pid)
+	rows, err := c.db.Query("SELECT name FROM views WHERE pid=$1", c.pid)
 	if err != nil {
 		return err
 	}
@@ -426,7 +426,7 @@ func (c *clients) set(dec decoder) error {
 			// new user; add it to the database.
 			// We first check that the user actually exists.
 			dbuser := ""
-			err = c.db.QueryRow("SELECT name FROM users WHERE name=?", user).
+			err = c.db.QueryRow("SELECT name FROM users WHERE name=$1", user).
 				Scan(&dbuser)
 			if err == sql.ErrNoRows {
 				return invalidBody
@@ -434,7 +434,7 @@ func (c *clients) set(dec decoder) error {
 				return err
 			}
 			// Now add the user.
-			_, err = c.db.Exec("INSERT INTO views VALUES (?, ?)", user, c.pid)
+			_, err = c.db.Exec("INSERT INTO views VALUES ($1, $2)", user, c.pid)
 			if err != nil {
 				return err
 			}
@@ -447,7 +447,7 @@ func (c *clients) set(dec decoder) error {
 	// Find old clients and remove them.
 	for key, removed := range old {
 		if removed {
-			_, err = c.db.Exec("DELETE FROM views WHERE name=? and pid=?", key, c.pid)
+			_, err = c.db.Exec("DELETE FROM views WHERE name=$1 and pid=$2", key, c.pid)
 			if err != nil {
 				return err
 			}
@@ -479,7 +479,7 @@ func (l *deliverableList) Permissions() int {
 }
 
 func (l *deliverableList) get(enc encoder) error {
-	rows, err := l.db.Query("SELECT id FROM deliverables WHERE pid=?", l.pid)
+	rows, err := l.db.Query("SELECT id FROM deliverables WHERE pid=$1", l.pid)
 	if err != nil {
 		return err
 	}
@@ -507,7 +507,7 @@ func (l *deliverableList) create(dec decoder, success func(string, interface{}) 
 		return invalidBody
 	}
 	v.Id = uint(rand.Int())
-	_, err = l.db.Exec("INSERT INTO deliverables VALUES (?, ?, ?, ?, ?, ?)",
+	_, err = l.db.Exec("INSERT INTO deliverables VALUES ($1, $2, $3, $4, $5, $6)",
 		v.Id, l.pid, v.Name, v.Due, v.Percentage, v.Description)
 	if err != nil {
 		return err
@@ -554,7 +554,7 @@ func (d *deliverableResource) Permissions() int {
 
 func (d *deliverableResource) get(enc encoder) error {
 	v := deliverable{}
-	err := d.db.QueryRow("SELECT name, due, percentage, description FROM deliverables WHERE id=? and pid=?", d.id, d.pid).
+	err := d.db.QueryRow("SELECT name, due, percentage, description FROM deliverables WHERE id=$1 and pid=$2", d.id, d.pid).
 		Scan(&v.Name, &v.Due, &v.Percentage, &v.Description)
 	if err != nil {
 		return err
@@ -568,13 +568,13 @@ func (d *deliverableResource) set(dec decoder) error {
 	if err != nil || !v.valid() {
 		return invalidBody
 	}
-	_, err = d.db.Exec("UPDATE deliverables SET name=?, due=?, percentage=?, description=? WHERE id=? and pid=?",
+	_, err = d.db.Exec("UPDATE deliverables SET name=$1, due=$2, percentage=$3, description=$4 WHERE id=$5 and pid=$6",
 		v.Name, v.Due, v.Percentage, v.Description, d.id, d.pid)
 	return err
 }
 
 func (d *deliverableResource) delete() error {
-	_, err := d.db.Exec("DELETE FROM deliverables WHERE id=? and pid=?",
+	_, err := d.db.Exec("DELETE FROM deliverables WHERE id=$1 and pid=$2",
 		d.id, d.pid)
 	return err
 }
@@ -587,7 +587,7 @@ func newDeliverable(user string, id uint, pid uint, db *sql.DB) (resource, error
 
 	// Check that the deliverable actually exists.
 	dbpid := 0
-	err = db.QueryRow("SELECT pid FROM deliverables WHERE id=? and pid=?", id, pid).Scan(&dbpid)
+	err = db.QueryRow("SELECT pid FROM deliverables WHERE id=$1 and pid=$2", id, pid).Scan(&dbpid)
 	if err == sql.ErrNoRows {
 		return nil, invalidResource
 	} else if err != nil {
