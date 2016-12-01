@@ -115,6 +115,10 @@ func (l *login) get(enc encoder) error {
 	return nil // No-op - for checking login credentials.
 }
 
+func (l *login) create(dec decoder, success func(string, interface{}) error) error {
+	return nil // Implemented in authenticateUser
+}
+
 type projectList struct {
 	resource
 	user        string
