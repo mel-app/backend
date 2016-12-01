@@ -99,7 +99,7 @@ func authenticateUser(writer http.ResponseWriter, fail func(int), request *http.
 	}
 
 	// Check the password.
-	if bytes.Equal(dbpassword, bytes.Repeat([]byte{' '}, 256)) {
+	if string(dbpassword) == "" {
 		// Special case an empty password in the database.
 		// This lets us create "public" demonstration accounts.
 		return user, true
