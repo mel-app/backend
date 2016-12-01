@@ -90,6 +90,7 @@ func authenticateUser(writer http.ResponseWriter, fail func(int), request *http.
 		}
 		return user, true
 	} else if err == sql.ErrNoRows {
+		log.Printf("No such user %s\n", user)
 		fail(http.StatusForbidden)
 		return user, false
 	} else if err != nil {
@@ -98,7 +99,7 @@ func authenticateUser(writer http.ResponseWriter, fail func(int), request *http.
 	}
 
 	// Check the password.
-	if string(dbpassword) == "" {
+	if bytes.Equal(dbpassword, bytes.Repeat([]byte{' '}, 256)) {
 		// Special case an empty password in the database.
 		// This lets us create "public" demonstration accounts.
 		return user, true
@@ -109,6 +110,7 @@ func authenticateUser(writer http.ResponseWriter, fail func(int), request *http.
 		return user, false
 	}
 	if !bytes.Equal(key, dbpassword) {
+		log.Printf("Invalid password for user %s\n", user)
 		fail(http.StatusForbidden)
 		return user, false
 	}
