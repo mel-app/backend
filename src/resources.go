@@ -104,6 +104,10 @@ type loginResource struct {
 	db   *sql.DB
 }
 
+type login struct {
+	Manager bool
+}
+
 // FIXME: Implement set as a way of changing passwords.
 // FIXME: Implement delete as a way of deleting an account.
 // FIXME: Figure out how to move the login creation from authenticateUser to
@@ -112,7 +116,12 @@ type loginResource struct {
 // get for loginResource returns some basic information about the user.
 // It can also be used to check login credentials.
 func (l *loginResource) get(enc encoder) error {
-	return nil // No-op - for checking login credentials.
+	login := login{Manager:false}
+	err := l.db.QueryRow("SELECT is_manager FROM users WHERE name=$1", l.user).Scan(&login.Manager)
+	if err != nil {
+		return err
+	}
+	return enc.Encode(login)
 }
 
 func (l *loginResource) create(dec decoder, success func(string, interface{}) error) error {
