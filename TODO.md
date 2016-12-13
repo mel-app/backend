@@ -32,5 +32,4 @@ be good to fix.
 
 - I should check that the database will always be in a consistent state.
 - Perhaps the database should be wrapped?
-- We don't tell the user if they are a manager or not.
 
