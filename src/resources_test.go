@@ -226,7 +226,7 @@ func TestProjectset(t *testing.T) {
 	check(t, &MockProjectDecoder{project{1, "test proj", 10, "Desc", false}}, nil)
 }
 
-func TestClientsPermissions(t *testing.T) {
+func TestClientListPermissions(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
 		t.Fatalf("opening database: %s", err)
@@ -244,7 +244,7 @@ func TestClientsPermissions(t *testing.T) {
 	}
 
 	check := func(t *testing.T, expected int) {
-		c, err := newClients("test", 0, db)
+		c, err := newClientList("test", 0, db)
 		if err != nil {
 			t.Fatalf("Unexpected error %q", err)
 		}
@@ -266,78 +266,7 @@ func TestClientsPermissions(t *testing.T) {
 	})
 	t.Run("Owns", func(t *testing.T) {
 		initDB(t, false, true)
-		check(t, get|set)
-	})
-}
-
-func TestClientsset(t *testing.T) {
-	// TODO: Add test cases for synchronisation.
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("opening database: %s", err)
-	}
-
-	c := clients{defaultResource{}, 1, nil, db}
-
-	check := func(t *testing.T, update, existing []string) {
-		rows := sqlmock.NewRows([]string{"name"})
-		for _, v := range existing {
-			rows.AddRow(v)
-		}
-		mock.ExpectQuery("SELECT name FROM views WHERE .*").
-			WillReturnRows(rows).WithArgs(c.pid)
-
-		// Look for added values.
-		for _, s := range update {
-			in := false
-			for _, v := range existing {
-				if v == s {
-					in = true
-				}
-			}
-			if !in {
-				mock.ExpectQuery(`SELECT name FROM users WHERE name=.*`).
-					WithArgs(s).WillReturnRows(sqlmock.NewRows([]string{"name"}).AddRow(s))
-				mock.ExpectExec("INSERT INTO views VALUES .*").WithArgs(s, c.pid).WillReturnResult(sqlmock.NewResult(0, 0))
-			}
-		}
-
-		// Look for removed values.
-		for _, s := range existing {
-			in := false
-			for _, v := range update {
-				if v == s {
-					in = true
-				}
-			}
-			if !in {
-				mock.ExpectExec("DELETE FROM views .*").WithArgs(s, c.pid).WillReturnResult(sqlmock.NewResult(0, 0))
-			}
-		}
-
-		err := c.set(&MockDecoder{update, 0})
-		if err != nil {
-			t.Errorf("Unexpected error %v", err)
-		}
-		err = mock.ExpectationsWereMet()
-		if err != nil {
-			t.Errorf("Expectations were not met: %q", err)
-		}
-	}
-
-	// We can only test single item changes here as sqlmock requires ordered
-	// queries.
-	t.Run("Empty", func(t *testing.T) {
-		check(t, []string{}, []string{})
-	})
-	t.Run("Remove", func(t *testing.T) {
-		check(t, []string{"2"}, []string{"1", "2"})
-	})
-	t.Run("Add", func(t *testing.T) {
-		check(t, []string{"1", "2", "3"}, []string{"2", "3"})
-	})
-	t.Run("Remove and add", func(t *testing.T) {
-		check(t, []string{"1", "2"}, []string{"2", "3"})
+		check(t, get|create)
 	})
 }
 
