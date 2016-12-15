@@ -13,13 +13,12 @@ be good to fix.
 - In line with the above, consider authenticating *after* creating the resource
   and including a flag for when authentication is not required.
 - Implement DELETE for user accounts.
+- User creation response code should be CREATED, not OK.
 
 ## Multiple managers ##
 
-- Versioning only works for the flag.
-- Wrap the version code and make it generic; apply it to everything.
+- Versioning only works for the flag - make that more generic.
 - Support multiple managers for each project.
-- Consider supporting "sharing" projects?
 
 ## Meta ##
 
@@ -30,6 +29,8 @@ be good to fix.
 
 ## Other ##
 
-- I should check that the database will always be in a consistent state.
+- I should check that the database will always be in a consistent state
+  (locking and atomic operations - this is also a security issue).
 - Perhaps the database should be wrapped?
+- We don't do proper input validation.
 
