@@ -13,7 +13,6 @@ be good to fix.
 - In line with the above, consider authenticating *after* creating the resource
   and including a flag for when authentication is not required.
 - Implement DELETE for user accounts.
-- User creation response code should be CREATED, not OK.
 
 ## Multiple managers ##
 
