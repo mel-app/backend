@@ -43,9 +43,9 @@ var loginTests = []Test{
 		SetAuth: setWrongPassword,
 	},
 	Test{
-		Name:	"login:MakeManager",
+		Name:   "login:MakeManager",
 		Method: "GET", URL: loginUrl, Status: http.StatusOK,
-		Pre:	makeManager,
+		Pre:       makeManager,
 		CheckBody: checkManager,
 	},
 }
