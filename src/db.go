@@ -20,8 +20,17 @@ func NewDB(db *sql.DB) DB {
 	return DB{db}
 }
 
+// SetIsManager updates the manager flag on the given user.
+func (d DB) SetIsManager(user string, isManager bool) error {
+	_, err := d.db.Exec("UPDATE users SET is_manager=$1 WHERE name=$2",
+		isManager, user)
+	return err
+}
+
 // Init clears and initialises the database with the expected tables.
-func (d *DB) Init() {
+// TODO: Figure out how to handle errors (DROP TABLEs can fail, but nothing
+//		 else).
+func (d DB) Init() {
 	exec := []string{
 		`DROP TABLE views`,
 		`DROP TABLE owns`,
