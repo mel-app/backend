@@ -69,6 +69,7 @@ func main() {
 func runTests(db *sql.DB) {
 	tests := [][]Test{
 		loginTests,
+		projectsTests,
 	}
 
 	for _, testSet := range tests {
