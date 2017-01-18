@@ -54,8 +54,7 @@ func main() {
 	go backend.Run(port, db)
 
 	// Clear, initialise the test database.
-	backendDB := backend.NewDB(db)
-	backendDB.Init()
+	backend.NewDB(db).Init()
 
 	// Suppress logging.
 	log.SetOutput(ioutil.Discard)
