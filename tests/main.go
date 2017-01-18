@@ -8,6 +8,7 @@ Contact:	<hobbitalastair at yandex dot com>
 package main
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -27,6 +28,7 @@ type Test struct {
 	Method    string
 	URL       string
 	Status    int
+	Body      string
 	CheckBody func(*json.Decoder) error
 	SetAuth   func(*http.Request)
 }
@@ -92,7 +94,8 @@ func runTest(t Test, db *sql.DB) error {
 	}
 
 	c := http.Client{}
-	req, err := http.NewRequest(t.Method, t.URL, nil)
+	req, err := http.NewRequest(t.Method, t.URL,
+		bytes.NewBufferString(t.Body))
 	if err != nil {
 		return err
 	}
