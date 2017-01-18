@@ -233,7 +233,8 @@ type project struct {
 func (p project) valid() bool {
 	return (p.Percentage <= 100) &&
 		(len(p.Name) < dbNameLen) && (len(p.Name) > 0) &&
-		(len(p.Description) < dbDescLen)
+		(len(p.Description) < dbDescLen) &&
+		(len(p.Updated) != 0)
 }
 
 func (p *projectResource) Permissions() int {
@@ -585,7 +586,8 @@ type deliverable struct {
 func (d deliverable) valid() bool {
 	return (d.Percentage <= 100) &&
 		(len(d.Name) < dbNameLen) && (len(d.Name) > 0) &&
-		(len(d.Description) < dbDescLen) && (len(d.Description) > 0)
+		(len(d.Description) < dbDescLen) && (len(d.Description) > 0) &&
+		(len(d.Updated) != 0) && (len(d.Due) != 0)
 }
 
 func (d *deliverableResource) Permissions() int {
