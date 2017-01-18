@@ -109,9 +109,8 @@ func runTest(t Test, db *sql.DB) error {
 	}
 	defer response.Body.Close()
 
-	err = checkStatus(response, t.Status)
-	if err != nil {
-		return err
+	if response.StatusCode != t.Status {
+		return fmt.Errorf("Expected %d, got %s!", t.Status, response.Status)
 	}
 
 	if t.CheckBody != nil {
@@ -126,14 +125,6 @@ func runTest(t Test, db *sql.DB) error {
 		if err != nil {
 			return err
 		}
-	}
-	return nil
-}
-
-// checkStatus returns an error if the status code is not what was expected.
-func checkStatus(response *http.Response, expected int) error {
-	if response.StatusCode != expected {
-		return fmt.Errorf("Expected %d, got %s!", expected, response.Status)
 	}
 	return nil
 }
