@@ -8,114 +8,61 @@ Contact:	<hobbitalastair at yandex dot com>
 package main
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
 )
 
 var loginUrl = url + "login"
-var user = "test user"
-var password = "test user 2"
 
 var loginTests = []Test{
-	Test{"loginUnauthorized", loginUnauthorized},
-	Test{"loginForbidden", loginUnauthorized},
-	Test{"loginCreate", loginCreate},
-	Test{"loginGet", loginGet},
-	Test{"loginCreateAgain", loginCreateAgain},
+	Test{
+		Name:   "login:Unauthorized",
+		Method: "GET", URL: loginUrl, Status: http.StatusUnauthorized,
+		SetAuth: setNilAuth,
+	},
+	Test{
+		Name:   "login:Forbidden",
+		Method: "GET", URL: loginUrl, Status: http.StatusForbidden,
+	},
+	Test{
+		Name:   "login:Create",
+		Method: "POST", URL: loginUrl, Status: http.StatusCreated,
+	},
+	Test{
+		Name:   "login:Get",
+		Method: "GET", URL: loginUrl, Status: http.StatusOK,
+		CheckBody: checkNotManager,
+	},
+	Test{
+		Name:   "login:CreateAgain",
+		Method: "POST", URL: loginUrl, Status: http.StatusForbidden,
+		SetAuth: setWrongPassword,
+	},
 }
 
 type login struct {
 	Manager bool
 }
 
-// loginUnauthorized checks that unauthorized access fails.
-func loginUnauthorized(db *sql.DB) error {
-	c := http.Client{}
-	req, err := http.NewRequest("GET", loginUrl, nil)
-	if err != nil {
-		return err
-	}
-	response, err := c.Do(req)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-	return checkStatus(response, http.StatusUnauthorized)
+// setNilAuth does not set any auth.
+func setNilAuth(r *http.Request) {
+	return
 }
 
-// loginForbidden checks that access fails when wrong credentials are supplied.
-func loginForbidden(db *sql.DB) error {
-	c := http.Client{}
-	req, err := http.NewRequest("GET", loginUrl, nil)
-	if err != nil {
-		return err
-	}
-	req.SetBasicAuth(user, password)
-	response, err := c.Do(req)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-	return checkStatus(response, http.StatusForbidden)
+// setWrongPassword provides an invalid password.
+func setWrongPassword(r *http.Request) {
+	r.SetBasicAuth(defaultUser, "some other password")
 }
 
-// loginCreate tests the login creation function.
-func loginCreate(db *sql.DB) error {
-	c := http.Client{}
-	req, err := http.NewRequest("POST", loginUrl, nil)
-	if err != nil {
-		return err
-	}
-	req.SetBasicAuth(user, password)
-	response, err := c.Do(req)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-	return checkStatus(response, http.StatusCreated)
-}
-
-// loginGet tests that the login is actually created.
-func loginGet(db *sql.DB) error {
-	c := http.Client{}
-	req, err := http.NewRequest("GET", loginUrl, nil)
-	if err != nil {
-		return err
-	}
-	req.SetBasicAuth(user, password)
-	response, err := c.Do(req)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-	err = checkStatus(response, http.StatusOK)
-	if err != nil {
-		return err
-	}
+// checkNotManager checks that the manager flag is not set.
+func checkNotManager(dec *json.Decoder) error {
 	login := login{true}
-	json.NewDecoder(response.Body).Decode(&login)
+	dec.Decode(&login)
 	if login.Manager != false {
 		return fmt.Errorf("Default login is a manager!")
 	}
 	return nil
-}
-
-// loginCreateAgain checks that trying to create the same user twice fails.
-func loginCreateAgain(db *sql.DB) error {
-	c := http.Client{}
-	req, err := http.NewRequest("POST", loginUrl, nil)
-	if err != nil {
-		return err
-	}
-	req.SetBasicAuth(user, "some other password")
-	response, err := c.Do(req)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-	return checkStatus(response, http.StatusForbidden)
 }
 
 // vim: sw=4 ts=4 noexpandtab
