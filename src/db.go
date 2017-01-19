@@ -82,10 +82,16 @@ func (d DB) Init() {
 			(0, 0, 'Deliverable 0', '11/25/2016', 20, FALSE, 'Finish backend', '1/17/2017', 0)`,
 		`INSERT INTO deliverables VALUES
 			(1, 0, 'Deliverable 1', '12/9/2016', 70, FALSE, 'Finish prototype', '1/17/2017', 0)`,
-		// Add a test user.
-		`INSERT INTO users VALUES ('test', '', '', TRUE)`,
-		`INSERT INTO owns VALUES ('test', 0)`,
-		`INSERT INTO views VALUES ('test', 1)`,
+		// Add some test users.
+		`INSERT INTO users VALUES ('beth', '', '', TRUE)`,
+		`INSERT INTO users VALUES ('bob', '', '', TRUE)`,
+		`INSERT INTO users VALUES ('bill', '', '', TRUE)`,
+		`INSERT INTO users VALUES ('ben', '', '', FALSE)`,
+		`INSERT INTO owns VALUES ('beth', 0)`,
+		`INSERT INTO views VALUES ('ben', 0)`,
+		`INSERT INTO owns VALUES ('bob', 1)`,
+		`INSERT INTO views VALUES ('ben', 1)`,
+		`INSERT INTO views VALUES ('bill', 1)`,
 	}
 
 	for _, cmd := range exec {
