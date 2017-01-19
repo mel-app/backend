@@ -20,6 +20,7 @@ var loginUrl = url + "login"
 var newPassword = "2nd password"
 
 var loginTests = []Test{
+	// Authentication sanity checks.
 	Test{
 		Name:   "login:Unauthorized",
 		Method: "GET", URL: loginUrl, Status: http.StatusUnauthorized,
@@ -29,6 +30,8 @@ var loginTests = []Test{
 		Name:   "login:Forbidden",
 		Method: "GET", URL: loginUrl, Status: http.StatusForbidden,
 	},
+
+	// Basic account functionality.
 	Test{
 		Name:   "login:Create",
 		Method: "POST", URL: loginUrl, Status: http.StatusCreated,
@@ -49,6 +52,8 @@ var loginTests = []Test{
 		Pre:       makeManager,
 		CheckBody: checkManager,
 	},
+
+	// Password change functionality.
 	Test{
 		Name:   "login:ChangePassword",
 		Method: "PUT", URL: loginUrl, Status: http.StatusOK,
