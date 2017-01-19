@@ -17,6 +17,7 @@ import (
 )
 
 var loginUrl = url + "login"
+var newPassword = "2nd password"
 
 var loginTests = []Test{
 	Test{
@@ -40,7 +41,7 @@ var loginTests = []Test{
 	Test{
 		Name:   "login:CreateAgain",
 		Method: "POST", URL: loginUrl, Status: http.StatusForbidden,
-		SetAuth: setWrongPassword,
+		SetAuth: setNewPassword,
 	},
 	Test{
 		Name:   "login:MakeManager",
@@ -48,10 +49,31 @@ var loginTests = []Test{
 		Pre:       makeManager,
 		CheckBody: checkManager,
 	},
+	Test{
+		Name:   "login:ChangePassword",
+		Method: "PUT", URL: loginUrl, Status: http.StatusOK,
+		Body: `{"Username":"` + defaultUser +
+			`","Password":"` + newPassword + `","Manager":true}`,
+	},
+	Test{
+		Name:   "login:TestNewPassword",
+		Method: "GET", URL: loginUrl, Status: http.StatusOK,
+		SetAuth:   setNewPassword,
+		CheckBody: checkManager,
+	},
+	Test{
+		Name:   "login:ResetPassword",
+		Method: "PUT", URL: loginUrl, Status: http.StatusOK,
+		SetAuth:   setNewPassword,
+		Body: `{"Username":"` + defaultUser +
+			`","Password":"` + defaultPassword + `","Manager":true}`,
+	},
 }
 
 type login struct {
-	Manager bool
+	User     string
+	Password string
+	Manager  bool
 }
 
 // setNilAuth does not set any auth.
@@ -59,9 +81,9 @@ func setNilAuth(r *http.Request) {
 	return
 }
 
-// setWrongPassword provides an invalid password.
-func setWrongPassword(r *http.Request) {
-	r.SetBasicAuth(defaultUser, "some other password")
+// setNewPassword authenticates using the second password.
+func setNewPassword(r *http.Request) {
+	r.SetBasicAuth(defaultUser, newPassword)
 }
 
 // makeManager makes the default user a manager.
@@ -71,7 +93,7 @@ func makeManager(db *sql.DB) error {
 
 // checkManager checks that the manager flag is set.
 func checkManager(dec *json.Decoder) error {
-	login := login{false}
+	login := login{Manager: false}
 	dec.Decode(&login)
 	if login.Manager != true {
 		return fmt.Errorf("Setting a manager did not work!")
@@ -81,7 +103,7 @@ func checkManager(dec *json.Decoder) error {
 
 // checkNotManager checks that the manager flag is not set.
 func checkNotManager(dec *json.Decoder) error {
-	login := login{true}
+	login := login{Manager: true}
 	dec.Decode(&login)
 	if login.Manager != false {
 		return fmt.Errorf("Default login is a manager!")

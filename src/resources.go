@@ -107,18 +107,21 @@ type loginResource struct {
 }
 
 type login struct {
-	Manager bool
+	Username string
+	Password string // Note that this field is largely unused.
+	Manager  bool
 }
 
-// FIXME: Implement set as a way of changing passwords.
 // FIXME: Implement delete as a way of deleting an account.
+// FIXME: Both in login creation and password change, check for a weak
+//		  password.
 // FIXME: Figure out how to move the login creation from authenticateUser to
 // create here.
 
 // get for loginResource returns some basic information about the user.
 // It can also be used to check login credentials.
 func (l *loginResource) get(enc encoder) error {
-	login := login{Manager:false}
+	login := login{Username: l.user, Manager: false}
 	err := l.db.QueryRow("SELECT is_manager FROM users WHERE name=$1", l.user).Scan(&login.Manager)
 	if err != nil {
 		return err
@@ -126,8 +129,18 @@ func (l *loginResource) get(enc encoder) error {
 	return enc.Encode(login)
 }
 
+// set for loginResource changes the password.
+func (l *loginResource) set(dec decoder) error {
+	login := login{}
+	err := dec.Decode(&login)
+	if err != nil {
+		return err
+	}
+	return SetPassword(l.user, login.Password, l.db)
+}
+
 func (l *loginResource) create(dec decoder, success func(string, interface{}) error) error {
-	login := login{Manager:false}
+	login := login{Username: l.user, Manager: false}
 	err := l.db.QueryRow("SELECT is_manager FROM users WHERE name=$1", l.user).Scan(&login.Manager)
 	if err != nil {
 		return err
@@ -222,8 +235,8 @@ type project struct {
 	Name        string
 	Percentage  uint
 	Description string
-	Updated	    string
-	Version	    uint
+	Updated     string
+	Version     uint
 	Owns        bool
 }
 
@@ -576,8 +589,8 @@ type deliverable struct {
 	Percentage  uint
 	Submitted   bool
 	Description string
-	Updated	    string
-	Version	    uint
+	Updated     string
+	Version     uint
 }
 
 // valid of deliverables returns true if the value will fit in the database and
