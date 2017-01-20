@@ -84,6 +84,23 @@ var loginTests = []Test{
 		Method: "POST", URL: loginUrl, Status: http.StatusCreated,
 		SetAuth:	setClientAuth,
 	},
+
+	// Account deletion.
+	// TODO: Check that associations with projects are cleaned up, and that
+	//		 projects with no owners are also deleted.
+	Test{
+		Name:	"login:Deletion",
+		Method:	"DELETE", URL: loginUrl, Status: http.StatusOK,
+	},
+	Test{
+		Name:   "login:Forbidden",
+		Method: "GET", URL: loginUrl, Status: http.StatusForbidden,
+	},
+	Test{
+		Name:   "login:ReCreateDeleted",
+		Method: "POST", URL: loginUrl, Status: http.StatusCreated,
+		Post:	makeManager,
+	},
 }
 
 type login struct {
