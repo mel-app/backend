@@ -27,6 +27,7 @@ type Test struct {
 	Post      func(*sql.DB) error
 	Method    string
 	URL       string
+	URLFunc	  func() string
 	Status    int
 	Body      string
 	CheckBody func(*json.Decoder) error
@@ -34,7 +35,9 @@ type Test struct {
 }
 
 var defaultUser = "test user"
-var defaultPassword = "test user 2"
+var defaultPassword = "test password"
+var client1User = "client 1"
+var client1Password = "client 1"
 
 var port = "8080"
 var url = "http://localhost:" + port + "/"
@@ -94,9 +97,13 @@ func runTest(t Test, db *sql.DB) error {
 		}
 	}
 
+	url := t.URL
+	if t.URLFunc != nil {
+		url = t.URLFunc()
+	}
+
 	c := http.Client{}
-	req, err := http.NewRequest(t.Method, t.URL,
-		bytes.NewBufferString(t.Body))
+	req, err := http.NewRequest(t.Method, url, bytes.NewBufferString(t.Body))
 	if err != nil {
 		return err
 	}

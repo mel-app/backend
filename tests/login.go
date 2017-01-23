@@ -67,11 +67,22 @@ var loginTests = []Test{
 		CheckBody: checkManager,
 	},
 	Test{
+		Name:   "login:TestNewPasswordChanged",
+		Method: "GET", URL: loginUrl, Status: http.StatusForbidden,
+	},
+	Test{
 		Name:   "login:ResetPassword",
 		Method: "PUT", URL: loginUrl, Status: http.StatusOK,
 		SetAuth:   setNewPassword,
 		Body: `{"Username":"` + defaultUser +
 			`","Password":"` + defaultPassword + `","Manager":true}`,
+	},
+
+	// Create a helper logins.
+	Test{
+		Name:   "login:CreateClient",
+		Method: "POST", URL: loginUrl, Status: http.StatusCreated,
+		SetAuth:	setClientAuth,
 	},
 }
 
@@ -89,6 +100,11 @@ func setNilAuth(r *http.Request) {
 // setNewPassword authenticates using the second password.
 func setNewPassword(r *http.Request) {
 	r.SetBasicAuth(defaultUser, newPassword)
+}
+
+// setClientAuth authenticates as the first client.
+func setClientAuth(r *http.Request) {
+	r.SetBasicAuth(client1User, client1Password)
 }
 
 // makeManager makes the default user a manager.
