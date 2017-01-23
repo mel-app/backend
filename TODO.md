@@ -28,6 +28,7 @@ be good to fix.
 
 ## Other ##
 
+- Combine the "views" and "owns" tables?
 - Perhaps provide a "recursive version" marker - that would allow shortcutting
   some trees when pulling from the server if the version has not changed.
   The "last changed" date is *almost* enough, bar time zones and other such
