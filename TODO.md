@@ -13,6 +13,8 @@ be good to fix.
 - In line with the above, consider authenticating *after* creating the resource
   and including a flag for when authentication is not required.
 - Implement DELETE for user accounts.
+- Creating an account multiple times is fine as long as the password/username
+  is the same; this should ideally fail, or be documented.
 
 ## Multiple managers ##
 
