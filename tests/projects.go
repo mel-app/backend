@@ -29,6 +29,13 @@ var projectsTests = []Test{
 		Body: `{"Name":"Test Project", "Updated":"2017-12-19"}`,
 	},
 	Test{
+		Name:	"projects:CreateAsClientForbidden",
+		Method: "POST", URL: projectsUrl,
+		Status: http.StatusForbidden,
+		SetAuth:	setClientAuth,
+		Body: `{"Name":"Test Project", "Updated":"2017-12-19"}`,
+	},
+	Test{
 		Name:   "projects:GetList",
 		Method: "GET", URL: projectsUrl, Status: http.StatusOK,
 		CheckBody: func(dec *json.Decoder) error {
