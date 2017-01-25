@@ -29,7 +29,7 @@ type Test struct {
 	URL       string
 	URLFunc	  func() string
 	Status    int
-	Body      string
+	BodyFunc  func() string
 	CheckBody func(*json.Decoder) error
 	SetAuth   func(*http.Request)
 }
@@ -103,7 +103,11 @@ func runTest(t Test, db *sql.DB) error {
 	}
 
 	c := http.Client{}
-	req, err := http.NewRequest(t.Method, url, bytes.NewBufferString(t.Body))
+	body := ""
+	if t.BodyFunc != nil {
+		body = t.BodyFunc()
+	}
+	req, err := http.NewRequest(t.Method, url, bytes.NewBufferString(body))
 	if err != nil {
 		return err
 	}

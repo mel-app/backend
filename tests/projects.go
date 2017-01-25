@@ -26,14 +26,18 @@ var projectsTests = []Test{
 	Test{
 		Name:   "projects:Create",
 		Method: "POST", URL: projectsUrl, Status: http.StatusCreated,
-		Body: `{"Name":"Test Project", "Updated":"2017-12-19"}`,
+		BodyFunc: func() string {
+			return `{"Name":"Test Project", "Updated":"2017-12-19"}`
+		},
 	},
 	Test{
 		Name:	"projects:CreateAsClientForbidden",
 		Method: "POST", URL: projectsUrl,
 		Status: http.StatusForbidden,
 		SetAuth:	setClientAuth,
-		Body: `{"Name":"Test Project", "Updated":"2017-12-19"}`,
+		BodyFunc: func() string {
+			return `{"Name":"Test Project", "Updated":"2017-12-19"}`
+		},
 	},
 	Test{
 		Name:   "projects:GetList",
@@ -60,6 +64,17 @@ var projectsTests = []Test{
 			})
 		},
 	},
+	Test{
+		Name:   "projects:Put",
+		Method:	"PUT", URLFunc: func() string {
+			return fmt.Sprintf("%s/%d", projectsUrl, projectIds[0])
+		},
+		Status: http.StatusOK,
+		BodyFunc: func() string {
+			return fmt.Sprintf(`{"Name":"Test Project 2", "Updated":"2017-12-19", "Id":%d}`,
+			projectIds[0])
+		},
+	},
 
 	// Access from clients.
 	Test{
@@ -77,7 +92,7 @@ var projectsTests = []Test{
 			return fmt.Sprintf("%s/%d/clients", projectsUrl, projectIds[0])
 		},
 		Status: http.StatusCreated,
-		Body: `{"Name":"` + client1User + `"}`,
+		BodyFunc: func() string { return `{"Name":"` + client1User + `"}` },
 	},
 	Test{
 		Name:	"projects:GetAsClient",
@@ -89,8 +104,20 @@ var projectsTests = []Test{
 		CheckBody: func(dec *json.Decoder) error {
 			return checkProjectEqual(dec, project{
 				Id: projectIds[0],
-				Name: "Test Project",
+				Name: "Test Project 2",
 			})
+		},
+	},
+	Test{
+		Name:   "projects:PutAsClientForbidden",
+		Method:	"PUT", URLFunc: func() string {
+			return fmt.Sprintf("%s/%d", projectsUrl, projectIds[0])
+		},
+		Status:	http.StatusForbidden,
+		SetAuth:	setClientAuth,
+		BodyFunc: func() string {
+			return fmt.Sprintf(`{"Name":"Test Project 2", "Updated":"2017-12-19", "Id":%d}`,
+			projectIds[0])
 		},
 	},
 
@@ -120,7 +147,7 @@ var projectsTests = []Test{
 		CheckBody: func(dec *json.Decoder) error {
 			return checkProjectEqual(dec, project{
 				Id: projectIds[0],
-				Name: "Test Project",
+				Name: "Test Project 2",
 				Owns: true,
 			})
 		},
@@ -131,7 +158,7 @@ var projectsTests = []Test{
 			return fmt.Sprintf("%s/%d/clients", projectsUrl, projectIds[0])
 		},
 		Status: http.StatusCreated,
-		Body: `{"Name":"` + client1User + `"}`,
+		BodyFunc: func() string { return `{"Name":"` + client1User + `"}` },
 	},
 	Test{
 		Name:	"projects:DeleteAsManager",

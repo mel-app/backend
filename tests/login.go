@@ -57,8 +57,10 @@ var loginTests = []Test{
 	Test{
 		Name:   "login:ChangePassword",
 		Method: "PUT", URL: loginUrl, Status: http.StatusOK,
-		Body: `{"Username":"` + defaultUser +
-			`","Password":"` + newPassword + `","Manager":true}`,
+		BodyFunc: func() string {
+			return `{"Username":"` + defaultUser +
+				`","Password":"` + newPassword + `","Manager":true}`
+		},
 	},
 	Test{
 		Name:   "login:TestNewPassword",
@@ -74,8 +76,10 @@ var loginTests = []Test{
 		Name:   "login:ResetPassword",
 		Method: "PUT", URL: loginUrl, Status: http.StatusOK,
 		SetAuth:   setNewPassword,
-		Body: `{"Username":"` + defaultUser +
-			`","Password":"` + defaultPassword + `","Manager":true}`,
+		BodyFunc: func() string {
+			return `{"Username":"` + defaultUser +
+				`","Password":"` + defaultPassword + `","Manager":true}`
+		},
 	},
 
 	// Create a helper logins.
