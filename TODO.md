@@ -38,4 +38,5 @@ be good to fix.
   (locking and atomic operations - this is also a security issue).
 - Perhaps the database should be wrapped?
 - We don't do proper input validation.
+- Support sending JSON deltas.
 
