@@ -102,8 +102,9 @@ func (r defaultResource) delete() error {
 
 type loginResource struct {
 	resource
-	user string
-	db   *sql.DB
+	user     string
+	password string
+	db       *sql.DB
 }
 
 type login struct {
@@ -143,6 +144,7 @@ func (l *loginResource) set(dec decoder) error {
 	return SetPassword(l.user, login.Password, l.db)
 }
 
+// create for loginResource creates a new account.
 func (l *loginResource) create(dec decoder, success func(string, interface{}) error) error {
 	login := login{Username: l.user, Manager: false}
 	err := l.db.QueryRow("SELECT is_manager FROM users WHERE name=$1", l.user).Scan(&login.Manager)
@@ -672,10 +674,10 @@ func newDeliverable(user string, id uint, pid uint, db *sql.DB) (resource, error
 }
 
 // fromURI returns the defaultResource corresponding to the given URI.
-func fromURI(user, uri string, db *sql.DB) (resource, error) {
+func fromURI(user, password, uri string, db *sql.DB) (resource, error) {
 	// Match the path to the regular expressions.
 	if loginRe.MatchString(uri) {
-		return &loginResource{defaultResource{}, user, db}, nil
+		return &loginResource{defaultResource{}, user, password, db}, nil
 	} else if projectListRe.MatchString(uri) {
 		return newProjectList(user, db)
 	} else if projectRe.MatchString(uri) {

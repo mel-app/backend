@@ -58,13 +58,13 @@ func encryptPassword(password string, salt []byte) ([]byte, error) {
 }
 
 // authenticateUser checks that the user and password in the given HTTP request.
-func authenticateUser(writer http.ResponseWriter, fail func(int), request *http.Request, db *sql.DB) (user string, ok bool) {
+func authenticateUser(writer http.ResponseWriter, fail func(int), request *http.Request, db *sql.DB) (user, password string, ok bool) {
 	// get the user name and password.
 	user, password, ok := request.BasicAuth()
 	if !ok {
 		writer.Header().Add("WWW-Authenticate", "basic realm=\"\"")
 		fail(http.StatusUnauthorized)
-		return user, false
+		return user, password, false
 	}
 
 	// Retrieve the salt and database password.
@@ -77,39 +77,39 @@ func authenticateUser(writer http.ResponseWriter, fail func(int), request *http.
 		_, err = rand.Read(salt)
 		if err != nil {
 			internalError(fail, err)
-			return user, false
+			return user, password, false
 		}
 		key, err := encryptPassword(password, salt)
 		if err != nil {
 			internalError(fail, err)
-			return user, false
+			return user, password, false
 		}
 		_, err = db.Exec("INSERT INTO users VALUES ($1, $2, $3, $4)", user, salt, key, false)
 		if err != nil {
 			internalError(fail, err)
-			return user, false
+			return user, password, false
 		}
-		return user, true
+		return user, password, true
 	} else if err == sql.ErrNoRows {
 		log.Printf("No such user %s\n", user)
 		fail(http.StatusForbidden)
-		return user, false
+		return user, password, false
 	} else if err != nil {
 		internalError(fail, err)
-		return user, false
+		return user, password, false
 	}
 
 	key, err := encryptPassword(password, salt)
 	if err != nil {
 		internalError(fail, err)
-		return user, false
+		return user, password, false
 	}
 	if !bytes.Equal(key, dbpassword) {
 		log.Printf("Invalid password for user %s\n", user)
 		fail(http.StatusForbidden)
-		return user, false
+		return user, password, false
 	}
-	return user, true
+	return user, password, true
 }
 
 // authenticateRequest checks that the given user has permission to complete
