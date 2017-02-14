@@ -681,46 +681,46 @@ func fromURI(user, uri string, db *sql.DB) (resource, error) {
 	} else if projectRe.MatchString(uri) {
 		pid, err := strconv.Atoi(projectRe.FindStringSubmatch(uri)[1])
 		if err != nil {
-			return nil, err
+			return nil, invalidResource
 		}
 		return newProject(user, uint(pid), db)
 	} else if flagRe.MatchString(uri) {
 		pid, err := strconv.Atoi(flagRe.FindStringSubmatch(uri)[1])
 		if err != nil {
-			return nil, err
+			return nil, invalidResource
 		}
 		return newFlag(user, uint(pid), db)
 	} else if clientListRe.MatchString(uri) {
 		pid, err := strconv.Atoi(clientListRe.FindStringSubmatch(uri)[1])
 		if err != nil {
-			return nil, err
+			return nil, invalidResource
 		}
 		return newClientList(user, uint(pid), db)
 	} else if clientRe.MatchString(uri) {
 		pid, err := strconv.Atoi(clientRe.FindStringSubmatch(uri)[1])
 		if err != nil {
-			return nil, err
+			return nil, invalidResource
 		}
 		id := clientRe.FindStringSubmatch(uri)[2]
 		name, err := base32.StdEncoding.DecodeString(id)
 		if err != nil {
-			return nil, err
+			return nil, invalidResource
 		}
 		return newClient(user, id, string(name), uint(pid), db)
 	} else if deliverableListRe.MatchString(uri) {
 		pid, err := strconv.Atoi(deliverableListRe.FindStringSubmatch(uri)[1])
 		if err != nil {
-			return nil, err
+			return nil, invalidResource
 		}
 		return newDeliverableList(user, uint(pid), db)
 	} else if deliverableRe.MatchString(uri) {
 		pid, err := strconv.Atoi(deliverableRe.FindStringSubmatch(uri)[1])
 		if err != nil {
-			return nil, err
+			return nil, invalidResource
 		}
 		id, err := strconv.Atoi(deliverableRe.FindStringSubmatch(uri)[2])
 		if err != nil {
-			return nil, err
+			return nil, invalidResource
 		}
 		return newDeliverable(user, uint(id), uint(pid), db)
 	} else {
