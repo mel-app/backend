@@ -42,6 +42,11 @@ var loginTests = []Test{
 		CheckBody: checkNotManager,
 	},
 	Test{
+		Name:   "login:InvalidPassword",
+		Method: "GET", URL: loginUrl, Status: http.StatusForbidden,
+		SetAuth:   setNewPassword,
+	},
+	Test{
 		Name:   "login:CreateAgain",
 		Method: "POST", URL: loginUrl, Status: http.StatusForbidden,
 		SetAuth: setNewPassword,
