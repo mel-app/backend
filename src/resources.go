@@ -112,7 +112,6 @@ type login struct {
 	Manager  bool
 }
 
-// FIXME: Implement delete as a way of deleting an account.
 // FIXME: Both in login creation and password change, check for a weak
 //		  password.
 // FIXME: Figure out how to move the login creation from authenticateUser to
@@ -151,37 +150,7 @@ func (l *loginResource) create(dec decoder, success func(string, interface{}) er
 // delete for loginResource deletes that account, and any connections to
 // projects.
 func (l *loginResource) delete() error {
-	// Delete all connections to the account.
-	for _, table := range []string{"views", "owns"} {
-		rows, err := l.db.Query(fmt.Sprintf("SELECT pid FROM %s WHERE name=$1", table), l.user)
-		if err != nil {
-			return err
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var id uint = 0
-			err = rows.Scan(&id)
-			if err != nil {
-				return err
-			}
-			project, err := newProject(l.user, id, l.db)
-			if err != nil {
-				return err
-			}
-			err = project.delete()
-			if err != nil {
-				return err
-			}
-		}
-		if rows.Err() != nil {
-			return rows.Err()
-		}
-	}
-
-	// Actually delete the account.
-	_, err := l.db.Exec("DELETE FROM users WHERE name=$1", l.user)
-	return err
+	return NewDB(l.db).DeleteUser(l.user)
 }
 
 type projectList struct {
