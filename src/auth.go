@@ -115,10 +115,10 @@ func authenticateUser(writer http.ResponseWriter, fail func(int), request *http.
 // authenticateRequest checks that the given user has permission to complete
 // the request.
 func authenticateRequest(request *http.Request, defaultResource resource) (ok bool) {
-	return ((request.Method == http.MethodGet) && (defaultResource.Permissions()&get != 0)) ||
-		((request.Method == http.MethodPut) && (defaultResource.Permissions()&set != 0)) ||
-		((request.Method == http.MethodPost) && (defaultResource.Permissions()&create != 0)) ||
-		((request.Method == http.MethodDelete) && (defaultResource.Permissions()&delete != 0))
+	return ((request.Method == http.MethodGet) && (defaultResource.forbidden()&get == 0)) ||
+		((request.Method == http.MethodPut) && (defaultResource.forbidden()&set == 0)) ||
+		((request.Method == http.MethodPost) && (defaultResource.forbidden()&create == 0)) ||
+		((request.Method == http.MethodDelete) && (defaultResource.forbidden()&delete == 0))
 }
 
 // vim: sw=4 ts=4 noexpandtab

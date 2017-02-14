@@ -21,7 +21,7 @@ var invalidResource error = fmt.Errorf("Invalid defaultResource\n")
 var invalidBody error = fmt.Errorf("Invalid body\n")
 var invalidMethod error = fmt.Errorf("Invalid method\n")
 
-// get/set permission types.
+// access types (for permission handling).
 const (
 	get = 1 << iota
 	set
@@ -45,7 +45,7 @@ type decoder interface {
 
 // Interface for the various defaultResource types.
 type resource interface {
-	Permissions() int
+	forbidden() int
 	get(encoder) error
 	set(decoder) error
 	create(decoder, func(string, interface{}) error) error
@@ -80,7 +80,7 @@ var (
 // to implement resource.
 type defaultResource struct{}
 
-func (r defaultResource) Permissions() int {
+func (r defaultResource) forbidden() int {
 	return get | set | create | delete
 }
 
@@ -116,6 +116,11 @@ type login struct {
 //		  password.
 // FIXME: Figure out how to move the login creation from authenticateUser to
 // create here.
+
+func (l *loginResource) forbidden() int {
+	// Anyone can access the login resource.
+	return 0
+}
 
 // get for loginResource returns some basic information about the user.
 // It can also be used to check login credentials.
@@ -155,13 +160,16 @@ func (l *loginResource) delete() error {
 
 type projectList struct {
 	resource
-	user        string
-	permissions int
-	db          *sql.DB
+	user       string
+	is_manager bool
+	db         *sql.DB
 }
 
-func (l *projectList) Permissions() int {
-	return l.permissions
+func (l *projectList) forbidden() int {
+	if l.is_manager {
+		return 0
+	}
+	return create
 }
 
 func (l *projectList) get(enc encoder) error {
@@ -214,25 +222,22 @@ func (l *projectList) create(dec decoder, success func(string, interface{}) erro
 }
 
 func newProjectList(user string, db *sql.DB) (resource, error) {
-	p := projectList{defaultResource{}, user, get, db}
+	p := projectList{defaultResource{}, user, false, db}
 	// Check if the user is a manager.
-	is_manager := false
-	err := db.QueryRow("SELECT is_manager FROM users WHERE name=$1", user).Scan(&is_manager)
+	err := db.QueryRow("SELECT is_manager FROM users WHERE name=$1", user).Scan(&p.is_manager)
 	if err != nil {
 		return nil, err
-	}
-	if is_manager {
-		p.permissions |= create
 	}
 	return &p, nil
 }
 
 type projectResource struct {
 	resource
-	pid         uint
-	permissions int
-	db          *sql.DB
-	user        string
+	pid   uint
+	db    *sql.DB
+	user  string
+	owns  bool
+	views bool
 }
 
 type project struct {
@@ -255,8 +260,13 @@ func (p project) valid() bool {
 		(len(p.Updated) != 0)
 }
 
-func (p *projectResource) Permissions() int {
-	return p.permissions
+func (p *projectResource) forbidden() int {
+	if p.owns {
+		return 0
+	} else if p.views {
+		return set
+	}
+	return get | set | delete
 }
 
 func (p *projectResource) get(enc encoder) error {
@@ -266,7 +276,7 @@ func (p *projectResource) get(enc encoder) error {
 	if err != nil {
 		return err
 	}
-	project := project{p.pid, name, uint(percentage), description, updated, uint(version), p.permissions&set != 0}
+	project := project{p.pid, name, uint(percentage), description, updated, uint(version), p.owns}
 	return enc.Encode(project)
 }
 
@@ -291,7 +301,7 @@ func (p *projectResource) set(dec decoder) error {
 // deliverables, and any viewing relations involving it.
 func (p *projectResource) delete() error {
 	var err error = nil
-	if p.permissions&set == 0 {
+	if !p.owns {
 		// Not an owner.
 		_, err = p.db.Exec("DELETE FROM views WHERE name=$1 and pid=$2",
 			p.user, p.pid)
@@ -324,8 +334,8 @@ func (p *projectResource) delete() error {
 	return err
 }
 
-func newProject(user string, pid uint, db *sql.DB) (resource, error) {
-	p := projectResource{defaultResource{}, pid, 0, db, user}
+func newProject(user string, pid uint, db *sql.DB) (*projectResource, error) {
+	p := projectResource{defaultResource{}, pid, db, user, false, false}
 
 	// Find the user.
 	dbpid := 0
@@ -333,9 +343,9 @@ func newProject(user string, pid uint, db *sql.DB) (resource, error) {
 		err := db.QueryRow(fmt.Sprintf("SELECT pid FROM %s WHERE name=$1 and pid=$2", table), user, pid).Scan(&dbpid)
 		if err == nil {
 			if table == "owns" {
-				p.permissions |= get | set | delete
+				p.owns = true
 			} else {
-				p.permissions |= get | delete
+				p.views = true
 			}
 		} else if err != sql.ErrNoRows {
 			return nil, err
@@ -348,7 +358,7 @@ func newProject(user string, pid uint, db *sql.DB) (resource, error) {
 type flagResource struct {
 	resource
 	pid     uint
-	project resource
+	project *projectResource
 	db      *sql.DB
 }
 
@@ -357,12 +367,12 @@ type flag struct {
 	Value   bool
 }
 
-func (f *flagResource) Permissions() int {
-	// Everyone can read and write to the flag.
-	if get&f.project.Permissions() != 0 {
-		return get | set
+func (f *flagResource) forbidden() int {
+	// Everyone in the project can read and write to the flag.
+	if f.project.owns || f.project.views {
+		return 0
 	}
-	return 0
+	return get | set
 }
 
 func (f *flagResource) get(enc encoder) error {
@@ -414,15 +424,15 @@ func newFlag(user string, pid uint, db *sql.DB) (resource, error) {
 type clientList struct {
 	resource
 	pid     uint
-	project resource
+	project *projectResource
 	db      *sql.DB
 }
 
-func (c *clientList) Permissions() int {
-	if c.project.Permissions()&set != 0 {
-		return get | create
+func (c *clientList) forbidden() int {
+	if c.project.owns {
+		return 0
 	}
-	return 0
+	return get | create
 }
 
 func (c *clientList) get(enc encoder) error {
@@ -486,7 +496,7 @@ type clientResource struct {
 	id      string
 	name    string
 	pid     uint
-	project resource
+	project *projectResource
 	db      *sql.DB
 }
 
@@ -496,11 +506,11 @@ type client struct {
 	IsManager bool // TODO: Support adding/removing managers through this.
 }
 
-func (c *clientResource) Permissions() int {
-	if c.project.Permissions()&set != 0 {
-		return get | delete
+func (c *clientResource) forbidden() int {
+	if c.project.owns {
+		return 0
 	}
-	return 0
+	return get | delete
 }
 
 func (c *clientResource) get(enc encoder) error {
@@ -524,17 +534,17 @@ func newClient(user, id, name string, pid uint, db *sql.DB) (resource, error) {
 type deliverableList struct {
 	resource
 	pid     uint
-	project resource
+	project *projectResource
 	db      *sql.DB
 }
 
-func (l *deliverableList) Permissions() int {
-	if set&l.project.Permissions() != 0 {
-		return get | create
-	} else if get&l.project.Permissions() != 0 {
-		return get
+func (l *deliverableList) forbidden() int {
+	if l.project.owns {
+		return 0
+	} else if l.project.views {
+		return create
 	}
-	return 0
+	return get | create
 }
 
 func (l *deliverableList) get(enc encoder) error {
@@ -583,7 +593,7 @@ type deliverableResource struct {
 	resource
 	id      uint
 	pid     uint
-	project resource
+	project *projectResource
 	db      *sql.DB
 }
 
@@ -608,11 +618,13 @@ func (d deliverable) valid() bool {
 		(len(d.Updated) != 0) && (len(d.Due) != 0)
 }
 
-func (d *deliverableResource) Permissions() int {
-	if set&d.project.Permissions() != 0 {
-		return get | set | create | delete
+func (d *deliverableResource) forbidden() int {
+	if d.project.owns {
+		return 0
+	} else if d.project.views {
+		return set | delete
 	}
-	return get & d.project.Permissions()
+	return get | set | delete
 }
 
 func (d *deliverableResource) get(enc encoder) error {

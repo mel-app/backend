@@ -6,12 +6,8 @@ be good to fix.
 
 ## Permissions/user accounts ##
 
-- Sometimes InvalidMethod/Forbidden/404 is returned when another value should
-  be - eg PUT /projects will return a Forbidden instead of InvalidMethod.
-  To fix this, the permissions code should be inverted to list "Forbidden"
-  accesses instead.
-- In line with the above, consider authenticating *after* creating the resource
-  and including a flag for when authentication is not required.
+- Consider authenticating *after* creating the resource and including a flag
+  for when authentication is not required.
 - Creating an account multiple times is fine as long as the password/username
   is the same; this should ideally fail, or be documented.
 
