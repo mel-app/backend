@@ -138,7 +138,7 @@ func (l *loginResource) set(dec decoder) error {
 	login := login{}
 	err := dec.Decode(&login)
 	if err != nil {
-		return err
+		return invalidBody
 	}
 	return SetPassword(l.user, login.Password, l.db)
 }
