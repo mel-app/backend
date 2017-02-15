@@ -115,8 +115,6 @@ type login struct {
 
 // FIXME: Both in login creation and password change, check for a weak
 //		  password.
-// FIXME: Figure out how to move the login creation from authenticateUser to
-// create here.
 
 func (l *loginResource) forbidden() int {
 	// Anyone can access the login resource.
@@ -146,12 +144,21 @@ func (l *loginResource) set(dec decoder) error {
 
 // create for loginResource creates a new account.
 func (l *loginResource) create(dec decoder, success func(string, interface{}) error) error {
-	login := login{Username: l.user, Manager: false}
-	err := l.db.QueryRow("SELECT is_manager FROM users WHERE name=$1", l.user).Scan(&login.Manager)
+	salt := make([]byte, passwordSize)
+	_, err = rand.Read(salt)
 	if err != nil {
 		return err
 	}
-	return success("/login", login)
+	key, err := encryptPassword(l.password, salt)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec("INSERT INTO users VALUES ($1, $2, $3, $4)",
+		user, salt, key, false)
+	if err != nil {
+		return err
+	}
+	return success("/login", login{Username: l.user, Manager: false)
 }
 
 // delete for loginResource deletes that account, and any connections to
