@@ -9,7 +9,6 @@ package backend
 
 import (
 	"bytes"
-	"crypto/rand"
 	"fmt"
 	"log"
 	"net/http"
@@ -60,7 +59,7 @@ func encryptPassword(password string, salt []byte) ([]byte, error) {
 // authenticateUser checks that the user and password in the given HTTP request.
 func authenticateUser(writer http.ResponseWriter, fail func(int), request *http.Request, db *sql.DB) (user, password string, ok bool) {
 	// get the user name and password.
-	user, password, ok := request.BasicAuth()
+	user, password, ok = request.BasicAuth()
 	if !ok {
 		writer.Header().Add("WWW-Authenticate", "basic realm=\"\"")
 		fail(http.StatusUnauthorized)

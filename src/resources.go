@@ -8,6 +8,7 @@ Contact:	<hobbitalastair at yandex dot com>
 package backend
 
 import (
+	cryptRand "crypto/rand"
 	"database/sql"
 	"encoding/base32"
 	"fmt"
@@ -102,9 +103,11 @@ func (r defaultResource) delete() error {
 
 type loginResource struct {
 	resource
-	user     string
-	password string
-	db       *sql.DB
+	user       string
+	password   string
+	exists     bool
+	is_manager bool
+	db         *sql.DB
 }
 
 type login struct {
@@ -117,19 +120,18 @@ type login struct {
 //		  password.
 
 func (l *loginResource) forbidden() int {
-	// Anyone can access the login resource.
+	// Anyone can access the login resource, bar create if the account already
+	// exists.
+	if l.exists {
+		return create
+	}
 	return 0
 }
 
 // get for loginResource returns some basic information about the user.
 // It can also be used to check login credentials.
 func (l *loginResource) get(enc encoder) error {
-	login := login{Username: l.user, Manager: false}
-	err := l.db.QueryRow("SELECT is_manager FROM users WHERE name=$1", l.user).Scan(&login.Manager)
-	if err != nil {
-		return err
-	}
-	return enc.Encode(login)
+	return enc.Encode(login{Username: l.user, Manager: l.is_manager})
 }
 
 // set for loginResource changes the password.
@@ -145,7 +147,7 @@ func (l *loginResource) set(dec decoder) error {
 // create for loginResource creates a new account.
 func (l *loginResource) create(dec decoder, success func(string, interface{}) error) error {
 	salt := make([]byte, passwordSize)
-	_, err = rand.Read(salt)
+	_, err := cryptRand.Read(salt)
 	if err != nil {
 		return err
 	}
@@ -153,18 +155,31 @@ func (l *loginResource) create(dec decoder, success func(string, interface{}) er
 	if err != nil {
 		return err
 	}
-	_, err = db.Exec("INSERT INTO users VALUES ($1, $2, $3, $4)",
-		user, salt, key, false)
+	_, err = l.db.Exec("INSERT INTO users VALUES ($1, $2, $3, $4)",
+		l.user, salt, key, false)
 	if err != nil {
 		return err
 	}
-	return success("/login", login{Username: l.user, Manager: false)
+	return success("/login", login{Username: l.user, Manager: false})
 }
 
 // delete for loginResource deletes that account, and any connections to
 // projects.
 func (l *loginResource) delete() error {
 	return NewDB(l.db).DeleteUser(l.user)
+}
+
+// newLogin creates a new loginResouces.
+// It saves the is_manager and exists state when creating the resource, since
+// they are used later in get() and forbidden().
+func newLogin(user string, password string, db *sql.DB) (resource, error) {
+	l := loginResource{defaultResource{}, user, password, true, false, db}
+	err := db.QueryRow("SELECT is_manager FROM users WHERE name=$1", user).Scan(&l.is_manager)
+	if err == sql.ErrNoRows {
+		l.exists = false
+		err = nil
+	}
+	return &l, err
 }
 
 type projectList struct {
@@ -684,7 +699,7 @@ func newDeliverable(user string, id uint, pid uint, db *sql.DB) (resource, error
 func fromURI(user, password, uri string, db *sql.DB) (resource, error) {
 	// Match the path to the regular expressions.
 	if loginRe.MatchString(uri) {
-		return &loginResource{defaultResource{}, user, password, db}, nil
+		return newLogin(user, password, db)
 	} else if projectListRe.MatchString(uri) {
 		return newProjectList(user, db)
 	} else if projectRe.MatchString(uri) {

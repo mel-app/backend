@@ -8,8 +8,6 @@ be good to fix.
 
 - Consider authenticating *after* creating the resource and including a flag
   for when authentication is not required.
-- Creating an account multiple times is fine as long as the password/username
-  is the same; this should ideally fail, or be documented.
 
 ## Multiple managers ##
 

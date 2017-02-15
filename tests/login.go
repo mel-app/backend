@@ -37,6 +37,10 @@ var loginTests = []Test{
 		Method: "POST", URL: loginUrl, Status: http.StatusCreated,
 	},
 	Test{
+		Name:   "login:CreateAgain",
+		Method: "POST", URL: loginUrl, Status: http.StatusForbidden,
+	},
+	Test{
 		Name:   "login:Get",
 		Method: "GET", URL: loginUrl, Status: http.StatusOK,
 		CheckBody: checkNotManager,
